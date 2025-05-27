@@ -1,2 +1,5 @@
-pandas
-numpy
+ipykernel
+pandas==2.2.3
+numpy==2.2.6
+ensure==1.0.4
+python-box==7.3.2

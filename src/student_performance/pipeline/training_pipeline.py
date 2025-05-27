@@ -1,0 +1,6 @@
+class TrainingPipeline:
+    def __init__(self):
+        ...
+
+    def run_pipeline(self):
+        ...
