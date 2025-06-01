@@ -1,16 +1,38 @@
 from pathlib import Path
-from ensure import ensure_annotations
 from box import ConfigBox
+from box.exceptions import BoxValueError, BoxTypeError, BoxKeyError
+from ensure import ensure_annotations
 import yaml
-from box.exceptions import BoxKeyError, BoxTypeError, BoxValueError
+
+from src.student_performance.logging import logger
+from src.student_performance.exception.exception import StudentPerformanceError
+
 
 @ensure_annotations
 def read_yaml(path_to_yaml: Path) -> ConfigBox:
+    """
+    Load a YAML file and return its contents as a ConfigBox for dot-access.
+
+    Raises:
+        StudentPerformanceError: If the file is missing, corrupted, or unreadable.
+    """
     if not path_to_yaml.exists():
-        msg =f"YAML file not found at: '{path_to_yaml.as_posix()}'"
-        raise FileNotFoundError(msg)
+        msg = f"YAML file not found: '{path_to_yaml}'"
+        raise StudentPerformanceError(FileNotFoundError(msg), msg)
+
     try:
-        with path_to_yaml.open("r", encoding="utf-8") as f:
-            content = yaml.safe_load(f)
-    except:
-        raise Exception 
+        with path_to_yaml.open("r", encoding="utf-8") as file:
+            content = yaml.safe_load(file)
+    except (BoxValueError, BoxTypeError, BoxKeyError, yaml.YAMLError) as e:
+        msg = f"Failed to parse YAML from: '{path_to_yaml.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+    except Exception as e:
+        msg = f"Unexpected error while reading YAML from: '{path_to_yaml.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+    if content is None:
+        msg = f"YAML file is empty or improperly formatted: '{path_to_yaml}'"
+        raise StudentPerformanceError(ValueError(msg), msg)
+
+    logger.info(f"YAML successfully loaded from: '{path_to_yaml.as_posix()}'")
+    return ConfigBox(content)

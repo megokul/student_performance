@@ -1,0 +1,31 @@
+📄 File-to-Part Mapping
+
+project_code_dump_part1.txt: app.py
+project_code_dump_part1.txt: debug.py
+project_code_dump_part1.txt: main.py
+project_code_dump_part1.txt: project_dump.py
+project_code_dump_part1.txt: project_template.py
+project_code_dump_part1.txt: setup.py
+project_code_dump_part1.txt: src\student_performance\__init__.py
+project_code_dump_part1.txt: src\student_performance\components\__init__.py
+project_code_dump_part1.txt: src\student_performance\config\__init__.py
+project_code_dump_part1.txt: src\student_performance\config\configuration.py
+project_code_dump_part1.txt: src\student_performance\constants\__init__.py
+project_code_dump_part1.txt: src\student_performance\constants\constants.py
+project_code_dump_part1.txt: src\student_performance\dbhandler\__init__.py
+project_code_dump_part1.txt: src\student_performance\dbhandler\base_handler.py
+project_code_dump_part1.txt: src\student_performance\dbhandler\postgres_dbhandler.py
+project_code_dump_part1.txt: src\student_performance\entity\__init__.py
+project_code_dump_part1.txt: src\student_performance\entity\config_entity.py
+project_code_dump_part1.txt: src\student_performance\exception\__init__.py
+project_code_dump_part1.txt: src\student_performance\exception\exception.py
+project_code_dump_part1.txt: src\student_performance\logging\__init__.py
+project_code_dump_part1.txt: src\student_performance\logging\app_logger.py
+project_code_dump_part1.txt: src\student_performance\pipeline\__init__.py
+project_code_dump_part1.txt: src\student_performance\pipeline\training_pipeline.py
+project_code_dump_part1.txt: src\student_performance\utils\__init__.py
+project_code_dump_part1.txt: src\student_performance\utils\core.py
+project_code_dump_part1.txt: src\student_performance\utils\timestamp.py
+project_code_dump_part1.txt: config\config.yaml
+project_code_dump_part1.txt: params.yaml
+project_code_dump_part1.txt: schema.yaml

@@ -1,28 +1,32 @@
 import sys
-from typing import Protocol
 from types import TracebackType
+from typing import Optional
 
-
-class LoggerInterface(Protocol):
-    def error(self, message: str) -> None:
-        """Log an error-level message."""
-        ...
+from src.student_performance.logging import logger
 
 
 class StudentPerformanceError(Exception):
-    def __init__(self, error: Exception, logger: LoggerInterface) -> None:
-        """
-        Wraps and logs the original exception with traceback metadata.
-        """
-        super().__init__(str(error))
-        self.message: str = str(error)
+    """
+    Custom exception for the Student Performance project.
 
-        # Extract traceback info
-        _, _, tb: TracebackType | None = sys.exc_info()
+    Automatically captures:
+    - Original exception message or optional custom message
+    - Filename and line number from traceback
+    - Logs the formatted error using a centralized logger
+    """
+
+    def __init__(self, error: Exception, message: Optional[str] = None) -> None:
+        final_message: str = message or str(error)
+        super().__init__(final_message)
+        self.message: str = final_message
+
+        # Extract traceback information
+        _, _, tb = sys.exc_info()
+        tb: TracebackType | None
         self.line: int | None = tb.tb_lineno if tb else None
         self.file: str = tb.tb_frame.f_code.co_filename if tb else "Unknown"
 
-        # Log the error using the provided logger
+        # Log the error using centralized logger
         logger.error(str(self))
 
     def __str__(self) -> str:

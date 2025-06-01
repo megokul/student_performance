@@ -1,0 +1,65 @@
+table_schema:
+  student_scores:
+    columns:
+      id:
+        type: "SERIAL PRIMARY KEY"
+
+      gender:
+        type: "VARCHAR(10)"
+        constraints:
+          allowed_values:
+            - "male"
+            - "female"
+
+      race_ethnicity:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "group A"
+            - "group B"
+            - "group C"
+            - "group D"
+            - "group E"
+
+      parental_level_of_education:
+        type: "VARCHAR(50)"
+        constraints:
+          allowed_values:
+            - "some high school"
+            - "high school"
+            - "associate's degree"
+            - "some college"
+            - "bachelor's degree"
+            - "master's degree"
+
+      lunch:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "standard"
+            - "free/reduced"
+
+      test_preparation_course:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "none"
+            - "completed"
+
+      math_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+      reading_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+      writing_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100

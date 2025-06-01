@@ -1,0 +1,860 @@
+
+📦 Project Structure of: E:\MyProjects\student_performance
+
+📄 .env
+📄 .gitignore
+📄 Dockerfile
+📄 app.py
+📁 config/
+    📄 config.yaml
+📄 debug.py
+📁 logs/
+    📁 2025_06_01T14_46_17Z/
+        📄 2025_06_01T14_46_17Z.log
+    📁 2025_06_01T14_49_11Z/
+        📄 2025_06_01T14_49_11Z.log
+    📁 2025_06_01T14_50_53Z/
+        📄 2025_06_01T14_50_53Z.log
+    📄 directorygen_logs.log
+📄 main.py
+📄 params.yaml
+📄 project_dump.py
+📄 project_template.py
+📄 requirements.txt
+📁 research/
+    📄 research.ipynb
+📄 schema.yaml
+📄 setup.py
+📁 src/
+    📁 student_performance/
+        📄 __init__.py
+        📁 components/
+            📄 __init__.py
+        📁 config/
+            📄 __init__.py
+            📄 configuration.py
+        📁 constants/
+            📄 __init__.py
+            📄 constants.py
+        📁 dbhandler/
+            📄 __init__.py
+            📄 base_handler.py
+            📄 postgres_dbhandler.py
+        📁 entity/
+            📄 __init__.py
+            📄 config_entity.py
+        📁 exception/
+            📄 __init__.py
+            📄 exception.py
+        📁 logging/
+            📄 __init__.py
+            📄 app_logger.py
+        📁 pipeline/
+            📄 __init__.py
+            📄 training_pipeline.py
+        📁 utils/
+            📄 __init__.py
+            📄 core.py
+            📄 timestamp.py
+📁 student_data/
+    📄 stud.csv
+📁 templates/
+    📄 index.html
+
+--- CODE DUMP | PART 1 of 1 ---
+
+
+================================================================================
+# PY FILE: app.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: debug.py
+================================================================================
+
+from src.student_performance.config.configuration import ConfigurationManager
+
+cmg = ConfigurationManager()
+postgres_handler_config = cmg.get_postgres_handler_config()
+
+print(postgres_handler_config)
+
+================================================================================
+# PY FILE: main.py
+================================================================================
+
+from src.student_performance.pipeline.training_pipeline import TrainingPipeline
+
+if __name__ == "__main__":
+    pipeline = TrainingPipeline()
+    pipeline.run_pipeline()
+    print("shivaneee!!!")
+
+================================================================================
+# PY FILE: project_dump.py
+================================================================================
+
+import os
+import math
+
+EXCLUDE_DIRS = {'.venv', 'venv', '__pycache__', '.github', '.git', '.idea', '.vscode', 'build', 'dist', '.mypy_cache'}
+INCLUDE_YAML_FILES = {'config.yaml', 'params.yaml', 'schema.yaml', 'templates.yaml'}
+BASE_OUTPUT_FILE = "project_code_dump_part"
+SUMMARY_FILE = "project_code_dump_index.txt"
+
+
+def is_valid_directory(dirname):
+    return not any(part in EXCLUDE_DIRS for part in dirname.split(os.sep))
+
+
+def print_directory_tree(start_path: str, indent: str = "", exclude_dirs=None, out_lines=None) -> list:
+    if exclude_dirs is None:
+        exclude_dirs = EXCLUDE_DIRS
+    if out_lines is None:
+        out_lines = []
+
+    try:
+        items = sorted(os.listdir(start_path))
+    except PermissionError:
+        return out_lines
+
+    for item in items:
+        item_path = os.path.join(start_path, item)
+        if os.path.isdir(item_path):
+            if item in exclude_dirs:
+                continue
+            out_lines.append(f"{indent}📁 {item}/")
+            print_directory_tree(item_path, indent + "    ", exclude_dirs, out_lines)
+        else:
+            out_lines.append(f"{indent}📄 {item}")
+    return out_lines
+
+
+def list_target_files(root_dir):
+    py_files = []
+    yaml_files = []
+
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        dirnames[:] = [d for d in dirnames if is_valid_directory(os.path.join(dirpath, d))]
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+            rel_path = os.path.relpath(full_path, root_dir)
+
+            if filename.endswith('.py'):
+                py_files.append((rel_path, full_path))
+            elif filename in INCLUDE_YAML_FILES:
+                yaml_files.append((rel_path, full_path))
+
+    return sorted(py_files), sorted(yaml_files)
+
+
+def chunk_list(data, num_chunks):
+    chunk_size = math.ceil(len(data) / num_chunks)
+    return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+
+def dump_project_code_in_parts(root_dir='.', num_parts=1):
+    py_files, yaml_files = list_target_files(root_dir)
+    tree_lines = print_directory_tree(root_dir, out_lines=[])
+    total_files = py_files + yaml_files
+
+    if not total_files:
+        print("❌ No .py or relevant .yaml files found.")
+        return
+
+    file_chunks = chunk_list(total_files, num_parts)
+
+    summary_lines = []
+    for i, chunk in enumerate(file_chunks, start=1):
+        part_filename = f"{BASE_OUTPUT_FILE}{i}.txt"
+        with open(part_filename, 'w', encoding='utf-8') as out_file:
+            out_file.write(f"\n📦 Project Structure of: {os.path.abspath(root_dir)}\n\n")
+            out_file.write("\n".join(tree_lines))
+            out_file.write(f"\n\n--- CODE DUMP | PART {i} of {num_parts} ---\n\n")
+
+            for rel_path, full_path in chunk:
+                summary_lines.append(f"{part_filename}: {rel_path}")
+                out_file.write(f"\n{'=' * 80}\n")
+                file_type = "PY FILE" if rel_path.endswith('.py') else "YAML FILE"
+                out_file.write(f"# {file_type}: {rel_path}\n")
+                out_file.write(f"{'=' * 80}\n\n")
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        out_file.write(content.strip() + "\n")
+                except Exception as e:
+                    out_file.write(f"Error reading {rel_path}: {e}\n")
+
+        print(f"✅ Dumped part {i} to: {os.path.abspath(part_filename)}")
+
+    # Write summary file
+    with open(SUMMARY_FILE, 'w', encoding='utf-8') as f:
+        f.write("📄 File-to-Part Mapping\n\n")
+        for line in summary_lines:
+            f.write(line + "\n")
+
+    print(f"\n📝 Summary index saved to: {os.path.abspath(SUMMARY_FILE)}")
+
+
+if __name__ == "__main__":
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+    try:
+        num_parts = int(input("Enter number of parts to split the dump into: ").strip())
+        if num_parts < 1:
+            raise ValueError
+    except ValueError:
+        print("❌ Invalid input. Please enter a positive integer.")
+    else:
+        dump_project_code_in_parts(ROOT_DIR, num_parts)
+
+================================================================================
+# PY FILE: project_template.py
+================================================================================
+
+import os
+from pathlib import Path
+import logging
+
+# ==============================
+# 🔹 LOGGING SETUP
+# ==============================
+
+# ✅ Define the directory where logs will be stored
+log_dir = "logs"
+
+# ✅ Define the log file name and full path
+log_filepath = os.path.join(log_dir, 'directorygen_logs.log')
+
+# ✅ Define the format for log messages
+log_format = '[%(asctime)s] - %(levelname)s - %(module)s - %(message)s'
+
+def setup_logging():
+    """
+    Sets up a custom logger:
+    - Creates the `logs/` directory if it doesn't exist.
+    - Configures log messages to be written to both a file and the console.
+    - Uses append mode (`"a"`) so logs persist across multiple runs.
+    - Ensures handlers are not added multiple times.
+    - Logger name: `directory_builder` (used for all logging in this script).
+    
+    Returns:
+        logging.Logger: Custom logger instance.
+    """
+
+    # ✅ Ensure the log directory exists before creating the log file
+    os.makedirs(log_dir, exist_ok=True)
+
+    # ✅ Create a custom logger (separate from the root logger)
+    logger = logging.getLogger('directory_builder')
+
+    # ✅ Set the logger level to DEBUG (captures all log levels)
+    logger.setLevel(logging.DEBUG)
+
+    # ✅ Prevent adding duplicate handlers
+    if not logger.hasHandlers():
+        formatter = logging.Formatter(log_format)  # ✅ Define the log message format
+
+        # ✅ Create a File Handler (logs INFO and above)
+        file_handler = logging.FileHandler(log_filepath, mode='a')  # Append mode ("a")
+        file_handler.setFormatter(formatter)  # Apply the log format
+
+        # ✅ Create a Stream Handler (logs DEBUG and above to console)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)  # Apply the log format
+
+        # ✅ Add handlers to the logger
+        logger.addHandler(file_handler)
+        logger.addHandler(stream_handler)
+
+    return logger  # ✅ Return the configured logger
+
+# ✅ Initialize the logger
+logger = setup_logging()
+
+
+
+# ==============================
+# 🔹 PROJECT SETUP
+# ==============================
+
+# ✅ Define the project name (used in file paths)
+project_name = input("Enter the project name: ")
+
+# ✅ List of files and directories to be created in the project structure
+list_of_files = [
+    # 🔹 GitHub workflows (for CI/CD setup)
+    ".github/workflows/.gitkeep",  
+    
+    # 🔹 Source Code Structure
+    f"src/{project_name}/__init__.py",  # Main package initializer
+    f"src/{project_name}/components/__init__.py",  # Components submodule initializer
+    f"src/{project_name}/utils/__init__.py",  # Utilities submodule initializer
+    f"src/{project_name}/utils/core.py",  # Core utility functions
+    f"src/{project_name}/config/__init__.py",  # Configuration submodule
+    f"src/{project_name}/config/configuration.py",  # Configuration handling script
+    f"src/{project_name}/pipeline/__init__.py",  # Pipeline processing module
+    f"src/{project_name}/entity/__init__.py",  # Entity-related module
+    f"src/{project_name}/entity/config_entity.py",  # Configuration entity class
+    f"src/{project_name}/constants/__init__.py",  # Constants module
+
+    # 🔹 Configuration and Parameter Files
+    "config/config.yaml",  # YAML file for configuration settings
+    "params.yaml",  # YAML file for parameter tuning
+    "schema.yaml",  # YAML file for data schema definition
+
+    # 🔹 Project Execution and Deployment
+    "main.py",  # Main entry point of the project
+    "Dockerfile",  # Dockerfile for containerization
+    "setup.py",  # Setup script for packaging
+    "requirements.txt",  # Requirements file for Python dependencies
+
+    # 🔹 Research and Web Components
+    "research/research.ipynb",  # Jupyter notebook for exploratory research
+    "templates/index.html",  # HTML template file (for a web component)
+
+    # 🔹 Backend API
+    "app.py"  # Flask or FastAPI backend application script
+]
+
+
+# ==============================
+# 🔹 DIRECTORY & FILE CREATION
+# ==============================
+
+def create_file_structure(file_list):
+    """
+    Creates directories and files based on the given list.
+    
+    - If a directory does not exist, it is created.
+    - If a file does not exist or is empty, it is created.
+    - Logs every operation to track what is being created.
+
+    Parameters:
+        file_list (list): List of file paths to be created.
+    """
+
+    for filepath in file_list:
+        filepath = Path(filepath)  # ✅ Convert string path to a `Path` object
+        filedir, filename = os.path.split(filepath)  # ✅ Extract directory and filename separately
+
+        # ✅ Ensure the parent directory exists before creating the file
+        if filedir:
+            os.makedirs(filedir, exist_ok=True)  # ✅ Create directory if it does not exist
+            logger.info(f"Creating the directory '{filedir}' for file: '{filename}'")
+
+        # ✅ Check if the file does not exist or is empty, then create it
+        if not filepath.exists() or filepath.stat().st_size == 0:
+            with open(filepath, 'w'):  # ✅ Create an empty file
+                pass  # No content is added, just initializing the file
+            logger.info(f"Creating empty file: '{filepath}'")  # ✅ Log file creation
+        else:
+            logger.info(f"'{filepath}' already exists")  # ✅ Log if the file already exists
+
+# ✅ Run the file creation function
+create_file_structure(list_of_files)
+
+================================================================================
+# PY FILE: setup.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\components\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\config\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\config\configuration.py
+================================================================================
+
+from src.student_performance.constants.constants import (
+    CONFIG_DIR,
+    CONFIG_FILENAME,
+    PARAMS_FILENAME,
+    SCHEMA_FILENAME,
+    TEMPLATES_FILENAME,
+    LOGS_ROOT,
+    ARTIFACTS_ROOT,
+    POSTGRES_HANDLER_ROOT,
+)
+from pathlib import Path
+import os
+from src.student_performance.utils.timestamp import get_utc_timestamp
+from src.student_performance.utils.core import read_yaml
+from src.student_performance.entity.config_entity import (
+    PostgresDBHandlerConfig,
+)
+
+class ConfigurationManager:
+    _global_timestamp: str = None
+    def __init__(self) -> None:
+        self._init_artifacts()
+        self._load_configs()
+
+    def _init_artifacts(self) -> None:
+        if ConfigurationManager._global_timestamp is None:
+            ConfigurationManager._global_timestamp = get_utc_timestamp
+
+        timestamp = ConfigurationManager._global_timestamp
+        self.artifacts_root = Path(ARTIFACTS_ROOT) / timestamp
+        self.logs_root = Path(LOGS_ROOT) / timestamp
+
+    def _load_configs(self) -> None:
+        config_dir = Path(CONFIG_DIR)
+        config_filepath = config_dir / CONFIG_FILENAME
+        params_filepath = config_dir / PARAMS_FILENAME
+        schema_filepath = config_dir / SCHEMA_FILENAME
+        templates_filepath = config_dir / TEMPLATES_FILENAME
+
+        self.config = read_yaml(config_filepath)
+        self.params = read_yaml(params_filepath)
+        self.schema = read_yaml(schema_filepath)
+        self.templates = read_yaml(templates_filepath)
+
+    def get_postgres_handler_config(self) -> PostgresDBHandlerConfig:
+
+        postgres_config = self.config.postgres_dbhandler
+        root_dir = self.artifacts_root / POSTGRES_HANDLER_ROOT
+        input_data_filepath = Path(postgres_config.input_data_dir) / postgres_config.input_data_filename
+
+        return PostgresDBHandlerConfig(
+            root_dir=root_dir,
+            host=os.getenv("RDS_HOST"),
+            port=os.getenv("RDS_PORT"),
+            dbname=os.getenv("RDS_DB"),
+            user=os.getenv("RDS_USER"),
+            password=os.getenv("RDS_PASS"),
+            table_name=os.getenv("RDS_TABLE"),
+            input_data_filepath=input_data_filepath,
+        )
+
+================================================================================
+# PY FILE: src\student_performance\constants\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\constants\constants.py
+================================================================================
+
+CONFIG_DIR = "config"
+CONFIG_FILENAME = "config.yaml"
+PARAMS_FILENAME = "params.yaml"
+SCHEMA_FILENAME = "schema.yaml"
+TEMPLATES_FILENAME = "templates.yaml"
+
+LOGS_ROOT = "logs"
+
+ARTIFACTS_ROOT = "artifacts"
+
+POSTGRES_HANDLER_ROOT = "mongo_handler"
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\base_handler.py
+================================================================================
+
+from abc import ABC, abstractmethod
+from pathlib import Path
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from student_performance.logging.app_logger import logger
+
+
+class DBHandler(ABC):
+    """
+    Abstract base class for all database/storage handlers.
+    Enables unified behavior across PostgreSQL, MongoDB, CSV, etc.
+    """
+
+    def __enter__(self) -> "DBHandler":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        try:
+            self.close()
+        except Exception as e:
+            msg = "Error closing DBHandler."
+            raise StudentPerformanceError(e, msg) from e
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
+    def load_from_source(self) -> pd.DataFrame:
+        pass
+
+    def load_from_csv(self, source: Path) -> pd.DataFrame:
+        try:
+            df = pd.read_csv(source)
+            logger.info(f"DataFrame loaded from CSV: {source}")
+            return df
+        except Exception as e:
+            msg = f"Failed to load DataFrame from CSV: '{source}'"
+            raise StudentPerformanceError(e, msg) from e
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\postgres_dbhandler.py
+================================================================================
+
+import psycopg2
+from psycopg2 import sql
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from student_performance.logging.app_logger import logger
+from src.student_performance.dbhandler.base_handler import DBHandler
+
+
+class PostgresDBHandler(DBHandler):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        dbname: str,
+        user: str,
+        password: str,
+        table_name: str,
+    ) -> None:
+        self.host = host
+        self.port = port
+        self.dbname = dbname
+        self.user = user
+        self.password = password
+        self.table_name = table_name
+
+        self._connection: psycopg2.extensions.connection | None = None
+        self._cursor: psycopg2.extensions.cursor | None = None
+
+    def _connect(self) -> None:
+        if not self._connection or self._connection.closed:
+            try:
+                self._connection = psycopg2.connect(
+                    host=self.host,
+                    port=self.port,
+                    dbname=self.dbname,
+                    user=self.user,
+                    password=self.password,
+                )
+                self._cursor = self._connection.cursor()
+            except Exception as e:
+                msg = "Failed to establish PostgreSQL connection"
+                raise StudentPerformanceError(e, msg) from e
+
+    def close(self) -> None:
+        if self._cursor:
+            self._cursor.close()
+        if self._connection:
+            self._connection.close()
+
+    def ping(self) -> None:
+        try:
+            self._connect()
+            self._cursor.execute("SELECT 1;")
+            self._cursor.fetchone()
+        except Exception as e:
+            msg = "PostgreSQL ping failed"
+            raise StudentPerformanceError(e, msg) from e
+
+    def load_from_source(self) -> pd.DataFrame:
+        try:
+            self._connect()
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.table_name))
+            df = pd.read_sql_query(query, self._connection)
+            logger.info(f"DataFrame loaded from PostgreSQL table: {self.table_name}")
+            return df
+        except Exception as e:
+            msg = f"Failed to load data from PostgreSQL table: {self.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+
+================================================================================
+# PY FILE: src\student_performance\entity\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\entity\config_entity.py
+================================================================================
+
+from box import ConfigBox
+from dataclasses import dataclass
+from pathlib import Path
+
+@dataclass
+class PostgresDBHandlerConfig:
+    root_dir: Path
+    host: str
+    port: int
+    dbname: str
+    user: str
+    password: str
+    table_name: str
+    input_data_filepath: Path
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.input_data_filepath = Path(self.input_data_filepath)
+
+    def __repr__(self) -> str:
+        return (
+            "\nPostgreSQL Handler Config:\n"
+            f"  - Root Dir:         '{self.root_dir.as_posix()}'\n"
+            f"  - Host:             {self.host}\n"
+            f"  - Port:             {self.port}\n"
+            f"  - Database Name:    {self.dbname}\n"
+            f"  - User:             {self.user}\n"
+            f"  - Password:         {'*' * 8} (hidden)\n"
+            f"  - Table:            {self.table_name}\n"
+            f"  - Input Filepath:   '{self.input_data_filepath.as_posix()}'\n"
+        )
+
+================================================================================
+# PY FILE: src\student_performance\exception\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\exception\exception.py
+================================================================================
+
+import sys
+from types import TracebackType
+from typing import Optional
+
+from student_performance.logging.app_logger import logger  # Centralized logger
+
+
+class StudentPerformanceError(Exception):
+    """
+    Custom exception for the Student Performance project.
+
+    Automatically captures:
+    - Original exception message or optional custom message
+    - Filename and line number from traceback
+    - Logs the formatted error using a centralized logger
+    """
+
+    def __init__(self, error: Exception, message: Optional[str] = None) -> None:
+        final_message: str = message or str(error)
+        super().__init__(final_message)
+        self.message: str = final_message
+
+        # Extract traceback information
+        _, _, tb : TracebackType = sys.exc_info()
+        self.line: int | None = tb.tb_lineno if tb else None
+        self.file: str = tb.tb_frame.f_code.co_filename if tb else "Unknown"
+
+        # Log the error using centralized logger
+        logger.error(str(self))
+
+    def __str__(self) -> str:
+        return (
+            f"Error occurred in file [{self.file}], "
+            f"line [{self.line}], "
+            f"message: [{self.message}]"
+        )
+
+================================================================================
+# PY FILE: src\student_performance\logging\__init__.py
+================================================================================
+
+"""
+Centralized logger for the student_performance project.
+
+Provides a reusable `logger` instance configured with:
+- UTC timestamped log directory and file
+- File + stream handlers
+- DEBUG level logging by default
+"""
+
+import logging
+from .app_logger import setup_logger
+
+# Static logger name and level
+LOGGER_NAME = "student_performance_logger"
+LOG_LEVEL = logging.DEBUG
+
+# Initialize logger once and share across the project
+logger = setup_logger(name=LOGGER_NAME, level=LOG_LEVEL)
+
+================================================================================
+# PY FILE: src\student_performance\logging\app_logger.py
+================================================================================
+
+import logging
+import sys
+from pathlib import Path
+from src.student_performance.constants.constants import LOGS_ROOT
+from src.student_performance.utils.timestamp import get_utc_timestamp
+
+def setup_logger(name: str = "app_logger", level: int = logging.DEBUG) -> logging.Logger:
+    """
+    Set up and return a logger with file and stream handlers, allowing custom log level.
+
+    Args:
+        name (str): Name of the logger.
+        level (int): Logging level (e.g., logging.DEBUG, logging.INFO).
+
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    sys.stdout.reconfigure(encoding="utf-8")
+    timestamp = get_utc_timestamp()
+
+    log_dir = Path(LOGS_ROOT) / timestamp
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_filepath = log_dir / f"{timestamp}.log"
+
+    log_format = "[%(asctime)s] - %(levelname)s - %(module)s - %(message)s"
+    formatter = logging.Formatter(log_format)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    # Add file handler if not already added
+    if not any(isinstance(h, logging.FileHandler) and h.baseFilename == str(log_filepath)
+               for h in logger.handlers):
+        file_handler = logging.FileHandler(log_filepath, mode="a")
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(level)
+        logger.addHandler(file_handler)
+
+    # Add stdout stream handler if not already added
+    if not any(isinstance(h, logging.StreamHandler) and h.stream == sys.stdout
+               for h in logger.handlers):
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        stream_handler.setLevel(level)
+        logger.addHandler(stream_handler)
+
+    return logger
+
+================================================================================
+# PY FILE: src\student_performance\pipeline\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\pipeline\training_pipeline.py
+================================================================================
+
+class TrainingPipeline:
+    def __init__(self):
+        ...
+
+    def run_pipeline(self):
+        ...
+
+================================================================================
+# PY FILE: src\student_performance\utils\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\utils\core.py
+================================================================================
+
+from pathlib import Path
+from box import ConfigBox
+from box.exceptions import BoxValueError, BoxTypeError, BoxKeyError
+from ensure import ensure_annotations
+import yaml
+
+from src.student_performance.logging.app_logger import logger
+from src.student_performance.exception.exception import StudentPerformanceError
+
+
+@ensure_annotations
+def read_yaml(path_to_yaml: Path) -> ConfigBox:
+    """
+    Load a YAML file and return its contents as a ConfigBox for dot-access.
+
+    Raises:
+        StudentPerformanceError: If the file is missing, corrupted, or unreadable.
+    """
+    if not path_to_yaml.exists():
+        msg = f"YAML file not found: '{path_to_yaml}'"
+        raise StudentPerformanceError(FileNotFoundError(msg), msg)
+
+    try:
+        with path_to_yaml.open("r", encoding="utf-8") as file:
+            content = yaml.safe_load(file)
+    except (BoxValueError, BoxTypeError, BoxKeyError, yaml.YAMLError) as e:
+        msg = f"Failed to parse YAML from: '{path_to_yaml.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+    except Exception as e:
+        msg = f"Unexpected error while reading YAML from: '{path_to_yaml.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+    if content is None:
+        msg = f"YAML file is empty or improperly formatted: '{path_to_yaml}'"
+        raise StudentPerformanceError(ValueError(msg), msg)
+
+    logger.info(f"YAML successfully loaded from: '{path_to_yaml.as_posix()}'")
+    return ConfigBox(content)
+
+================================================================================
+# PY FILE: src\student_performance\utils\timestamp.py
+================================================================================
+
+from datetime import datetime, timezone
+
+_timestamp_cache: str | None = None
+
+def get_utc_timestamp() -> str:
+    format="%Y_%m_%dT%H_%M_%SZ"
+    global _timestamp_cache
+    if _timestamp_cache is None:
+        _timestamp_cache = datetime.now(timezone.utc).strftime(format)
+    return _timestamp_cache
+
+================================================================================
+# YAML FILE: config\config.yaml
+================================================================================
+
+# PostGres configuration
+postgres_dbhandler:
+  input_data_dir: student_data
+  input_data_filename: stud.csv
+  database_name: student-performance-db
+  table_name: student-scores
+
+================================================================================
+# YAML FILE: params.yaml
+================================================================================
+
+
+
+================================================================================
+# YAML FILE: schema.yaml
+================================================================================
+
+

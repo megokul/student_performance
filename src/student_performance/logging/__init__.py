@@ -8,10 +8,10 @@ Provides a reusable `logger` instance configured with:
 """
 
 import logging
-from .logger import setup_logger
+from .app_logger import setup_logger
 
 # Static logger name and level
-LOGGER_NAME = "student_performance"
+LOGGER_NAME = "student_performance_logger"
 LOG_LEVEL = logging.DEBUG
 
 # Initialize logger once and share across the project
