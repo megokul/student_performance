@@ -12,6 +12,7 @@ class PostgresDBHandlerConfig:
     password: str
     table_name: str
     input_data_filepath: Path
+    table_schema: ConfigBox
 
     def __post_init__(self):
         self.root_dir = Path(self.root_dir)
@@ -28,4 +29,5 @@ class PostgresDBHandlerConfig:
             f"  - Password:         {'*' * 8} (hidden)\n"
             f"  - Table:            {self.table_name}\n"
             f"  - Input Filepath:   '{self.input_data_filepath.as_posix()}'\n"
+            f"  - Input Filepath:   {'table_schema'} (hidden)\n"
         )

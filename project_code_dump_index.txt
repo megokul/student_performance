@@ -27,5 +27,8 @@ project_code_dump_part1.txt: src\student_performance\utils\__init__.py
 project_code_dump_part1.txt: src\student_performance\utils\core.py
 project_code_dump_part1.txt: src\student_performance\utils\timestamp.py
 project_code_dump_part1.txt: config\config.yaml
+project_code_dump_part1.txt: config\params.yaml
+project_code_dump_part1.txt: config\schema.yaml
+project_code_dump_part1.txt: config\templates.yaml
 project_code_dump_part1.txt: params.yaml
 project_code_dump_part1.txt: schema.yaml

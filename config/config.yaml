@@ -2,5 +2,6 @@
 postgres_dbhandler:
   input_data_dir: student_data
   input_data_filename: stud.csv
-  database_name: student-performance-db
-  table_name: student-scores
+  dbname: student_performance_db
+  table_name: student_scores
+  

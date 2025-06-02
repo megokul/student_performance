@@ -7,17 +7,37 @@
 📄 app.py
 📁 config/
     📄 config.yaml
+    📄 params.yaml
+    📄 schema.yaml
+    📄 templates.yaml
 📄 debug.py
 📁 logs/
-    📁 2025_06_01T14_46_17Z/
-        📄 2025_06_01T14_46_17Z.log
-    📁 2025_06_01T14_49_11Z/
-        📄 2025_06_01T14_49_11Z.log
-    📁 2025_06_01T14_50_53Z/
-        📄 2025_06_01T14_50_53Z.log
-    📄 directorygen_logs.log
+    📁 2025_06_01T19_25_35Z/
+        📄 2025_06_01T19_25_35Z.log
+    📁 2025_06_01T22_28_25Z/
+        📄 2025_06_01T22_28_25Z.log
+    📁 2025_06_01T23_38_51Z/
+        📄 2025_06_01T23_38_51Z.log
+    📁 2025_06_01T23_47_44Z/
+        📄 2025_06_01T23_47_44Z.log
+    📁 2025_06_01T23_52_07Z/
+        📄 2025_06_01T23_52_07Z.log
+    📁 2025_06_02T00_36_17Z/
+        📄 2025_06_02T00_36_17Z.log
+    📁 2025_06_02T00_38_54Z/
+        📄 2025_06_02T00_38_54Z.log
+    📁 2025_06_02T00_48_39Z/
+        📄 2025_06_02T00_48_39Z.log
+    📁 2025_06_02T01_06_41Z/
+        📄 2025_06_02T01_06_41Z.log
+    📁 2025_06_02T01_11_09Z/
+        📄 2025_06_02T01_11_09Z.log
+    📁 2025_06_02T01_11_31Z/
+        📄 2025_06_02T01_11_31Z.log
 📄 main.py
 📄 params.yaml
+📄 project_code_dump_index.txt
+📄 project_code_dump_part1.txt
 📄 project_dump.py
 📄 project_template.py
 📄 requirements.txt
@@ -75,11 +95,20 @@
 ================================================================================
 
 from src.student_performance.config.configuration import ConfigurationManager
+from src.student_performance.dbhandler.postgres_dbhandler import PostgresDBHandler
+from dotenv import load_dotenv
+load_dotenv()
 
 cmg = ConfigurationManager()
 postgres_handler_config = cmg.get_postgres_handler_config()
 
 print(postgres_handler_config)
+
+
+postgres_dbhandler = PostgresDBHandler(postgres_handler_config)
+
+with postgres_dbhandler:
+    postgres_dbhandler.ping()
 
 ================================================================================
 # PY FILE: main.py
@@ -401,6 +430,10 @@ from src.student_performance.entity.config_entity import (
     PostgresDBHandlerConfig,
 )
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 class ConfigurationManager:
     _global_timestamp: str = None
     def __init__(self) -> None:
@@ -409,7 +442,7 @@ class ConfigurationManager:
 
     def _init_artifacts(self) -> None:
         if ConfigurationManager._global_timestamp is None:
-            ConfigurationManager._global_timestamp = get_utc_timestamp
+            ConfigurationManager._global_timestamp = get_utc_timestamp()
 
         timestamp = ConfigurationManager._global_timestamp
         self.artifacts_root = Path(ARTIFACTS_ROOT) / timestamp
@@ -437,10 +470,10 @@ class ConfigurationManager:
             root_dir=root_dir,
             host=os.getenv("RDS_HOST"),
             port=os.getenv("RDS_PORT"),
-            dbname=os.getenv("RDS_DB"),
+            dbname=postgres_config.dbname,
             user=os.getenv("RDS_USER"),
             password=os.getenv("RDS_PASS"),
-            table_name=os.getenv("RDS_TABLE"),
+            table_name=postgres_config.table_name,
             input_data_filepath=input_data_filepath,
         )
 
@@ -481,7 +514,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.student_performance.exception.exception import StudentPerformanceError
-from student_performance.logging.app_logger import logger
+from src.student_performance.logging import logger
 
 
 class DBHandler(ABC):
@@ -524,29 +557,18 @@ class DBHandler(ABC):
 import psycopg2
 from psycopg2 import sql
 import pandas as pd
+import yaml
 
 from src.student_performance.exception.exception import StudentPerformanceError
-from student_performance.logging.app_logger import logger
+from src.student_performance.logging import logger
 from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.entity.config_entity import PostgresDBHandlerConfig
+from box import ConfigBox
 
 
 class PostgresDBHandler(DBHandler):
-    def __init__(
-        self,
-        host: str,
-        port: int,
-        dbname: str,
-        user: str,
-        password: str,
-        table_name: str,
-    ) -> None:
-        self.host = host
-        self.port = port
-        self.dbname = dbname
-        self.user = user
-        self.password = password
-        self.table_name = table_name
-
+    def __init__(self, postgres_config: PostgresDBHandlerConfig) -> None:
+        self.postgres_config = postgres_config
         self._connection: psycopg2.extensions.connection | None = None
         self._cursor: psycopg2.extensions.cursor | None = None
 
@@ -554,11 +576,11 @@ class PostgresDBHandler(DBHandler):
         if not self._connection or self._connection.closed:
             try:
                 self._connection = psycopg2.connect(
-                    host=self.host,
-                    port=self.port,
-                    dbname=self.dbname,
-                    user=self.user,
-                    password=self.password,
+                    host=self.postgres_config.host,
+                    port=self.postgres_config.port,
+                    dbname=self.postgres_config.dbname,
+                    user=self.postgres_config.user,
+                    password=self.postgres_config.password,
                 )
                 self._cursor = self._connection.cursor()
             except Exception as e:
@@ -589,6 +611,63 @@ class PostgresDBHandler(DBHandler):
             return df
         except Exception as e:
             msg = f"Failed to load data from PostgreSQL table: {self.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+
+    def create_table_if_not_exists(self, table_name: str, schema: ConfigBox) -> None:
+        """
+        Create a PostgreSQL table if it doesn't exist using schema from ConfigBox.
+
+        Args:
+            table_name (str): The name of the table to create.
+            schema (ConfigBox): Parsed schema.yaml with dot-access support.
+
+        Raises:
+            StudentPerformanceError: If table creation fails.
+        """
+        try:
+            self._connect()
+
+            # Access columns via dot-notation
+            table_schema = schema.table_schema[table_name].columns
+            column_definitions = []
+
+            for col_name, col_def in table_schema.items():
+                col_type = col_def.type
+                constraints = col_def.get("constraints", {})
+
+                column_sql = f"{col_name} {col_type}"
+
+                # ENUM-style value check
+                if "allowed_values" in constraints:
+                    allowed = ", ".join(f"'{val}'" for val in constraints.allowed_values)
+                    column_sql += f" CHECK ({col_name} IN ({allowed}))"
+
+                # Numeric bounds
+                if "min" in constraints and "max" in constraints:
+                    column_sql += f" CHECK ({col_name} BETWEEN {constraints.min} AND {constraints.max})"
+                elif "min" in constraints:
+                    column_sql += f" CHECK ({col_name} >= {constraints.min})"
+                elif "max" in constraints:
+                    column_sql += f" CHECK ({col_name} <= {constraints.max})"
+
+                column_definitions.append(column_sql)
+
+            # Final CREATE query
+            create_query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {} (
+                    {}
+                );
+            """).format(
+                sql.Identifier(table_name),
+                sql.SQL(", ").join(map(sql.SQL, column_definitions))
+            )
+
+            self._cursor.execute(create_query)
+            self._connection.commit()
+            logger.info(f"Table '{table_name}' created (if it did not exist).")
+
+        except Exception as e:
+            msg = f"Failed to create table: '{table_name}'"
             raise StudentPerformanceError(e, msg) from e
 
 ================================================================================
@@ -622,7 +701,7 @@ class PostgresDBHandlerConfig:
 
     def __repr__(self) -> str:
         return (
-            "\nPostgreSQL Handler Config:\n"
+            "\nPostgres DB Handler Config:\n"
             f"  - Root Dir:         '{self.root_dir.as_posix()}'\n"
             f"  - Host:             {self.host}\n"
             f"  - Port:             {self.port}\n"
@@ -647,7 +726,7 @@ import sys
 from types import TracebackType
 from typing import Optional
 
-from student_performance.logging.app_logger import logger  # Centralized logger
+from src.student_performance.logging import logger
 
 
 class StudentPerformanceError(Exception):
@@ -666,7 +745,8 @@ class StudentPerformanceError(Exception):
         self.message: str = final_message
 
         # Extract traceback information
-        _, _, tb : TracebackType = sys.exc_info()
+        _, _, tb = sys.exc_info()
+        tb: TracebackType | None
         self.line: int | None = tb.tb_lineno if tb else None
         self.file: str = tb.tb_frame.f_code.co_filename if tb else "Unknown"
 
@@ -788,7 +868,7 @@ from box.exceptions import BoxValueError, BoxTypeError, BoxKeyError
 from ensure import ensure_annotations
 import yaml
 
-from src.student_performance.logging.app_logger import logger
+from src.student_performance.logging import logger
 from src.student_performance.exception.exception import StudentPerformanceError
 
 
@@ -844,8 +924,90 @@ def get_utc_timestamp() -> str:
 postgres_dbhandler:
   input_data_dir: student_data
   input_data_filename: stud.csv
-  database_name: student-performance-db
+  dbname: student-performance-db
   table_name: student-scores
+
+================================================================================
+# YAML FILE: config\params.yaml
+================================================================================
+
+key: value
+
+================================================================================
+# YAML FILE: config\schema.yaml
+================================================================================
+
+table_schema:
+  student_scores:
+    columns:
+      id:
+        type: "SERIAL PRIMARY KEY"
+
+      gender:
+        type: "VARCHAR(10)"
+        constraints:
+          allowed_values:
+            - "male"
+            - "female"
+
+      race_ethnicity:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "group A"
+            - "group B"
+            - "group C"
+            - "group D"
+            - "group E"
+
+      parental_level_of_education:
+        type: "VARCHAR(50)"
+        constraints:
+          allowed_values:
+            - "some high school"
+            - "high school"
+            - "associate's degree"
+            - "some college"
+            - "bachelor's degree"
+            - "master's degree"
+
+      lunch:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "standard"
+            - "free/reduced"
+
+      test_preparation_course:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "none"
+            - "completed"
+
+      math_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+      reading_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+      writing_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+================================================================================
+# YAML FILE: config\templates.yaml
+================================================================================
+
+key: value
 
 ================================================================================
 # YAML FILE: params.yaml

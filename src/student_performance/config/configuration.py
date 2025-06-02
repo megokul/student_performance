@@ -1,4 +1,3 @@
-
 from src.student_performance.constants.constants import (
     CONFIG_DIR,
     CONFIG_FILENAME,
@@ -16,10 +15,6 @@ from src.student_performance.utils.core import read_yaml
 from src.student_performance.entity.config_entity import (
     PostgresDBHandlerConfig,
 )
-
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class ConfigurationManager:
     _global_timestamp: str = None
@@ -52,14 +47,16 @@ class ConfigurationManager:
         postgres_config = self.config.postgres_dbhandler
         root_dir = self.artifacts_root / POSTGRES_HANDLER_ROOT
         input_data_filepath = Path(postgres_config.input_data_dir) / postgres_config.input_data_filename
+        table_schema = self.schema.table_schema
 
         return PostgresDBHandlerConfig(
             root_dir=root_dir,
             host=os.getenv("RDS_HOST"),
             port=os.getenv("RDS_PORT"),
-            dbname=os.getenv("RDS_DB"),
+            dbname=postgres_config.dbname,
             user=os.getenv("RDS_USER"),
             password=os.getenv("RDS_PASS"),
             table_name=postgres_config.table_name,
             input_data_filepath=input_data_filepath,
+            table_schema=table_schema,
         )
