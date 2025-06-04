@@ -1,6 +1,5 @@
 import sys
 from types import TracebackType
-from typing import Optional
 
 from src.student_performance.logging import logger
 
@@ -15,7 +14,7 @@ class StudentPerformanceError(Exception):
     - Logs the formatted error using a centralized logger
     """
 
-    def __init__(self, error: Exception, message: Optional[str] = None) -> None:
+    def __init__(self, error: Exception, message: str | None = None) -> None:
         final_message: str = message or str(error)
         super().__init__(final_message)
         self.message: str = final_message
@@ -27,7 +26,7 @@ class StudentPerformanceError(Exception):
         self.file: str = tb.tb_frame.f_code.co_filename if tb else "Unknown"
 
         # Log the error using centralized logger
-        logger.error(str(self))
+        logger.error(str(self), exc_info=sys.exc_info())
 
     def __str__(self) -> str:
         return (

@@ -1,0 +1,29 @@
+[2025-06-04 18:59:41,190] - INFO - training_pipeline - Initializing TrainingPipeline...
+[2025-06-04 18:59:41,191] - INFO - core - YAML successfully loaded from: 'config/config.yaml'
+[2025-06-04 18:59:41,191] - INFO - core - YAML successfully loaded from: 'config/params.yaml'
+[2025-06-04 18:59:41,195] - INFO - core - YAML successfully loaded from: 'config/schema.yaml'
+[2025-06-04 18:59:41,196] - INFO - core - YAML successfully loaded from: 'config/templates.yaml'
+[2025-06-04 18:59:41,196] - INFO - training_pipeline - ========== Training Pipeline Started ==========
+[2025-06-04 18:59:41,196] - INFO - postgres_dbhandler - Initializing PostgresDBHandler
+[2025-06-04 18:59:41,196] - INFO - data_ingestion - ========== Starting Data Ingestion ==========
+[2025-06-04 18:59:41,197] - INFO - postgres_dbhandler - Loading data from PostgreSQL table: student_scores
+[2025-06-04 18:59:41,197] - INFO - postgres_dbhandler - Attempting to connect to PostgreSQL
+[2025-06-04 18:59:42,409] - INFO - postgres_dbhandler - Successfully connected to PostgreSQL
+[2025-06-04 18:59:42,410] - INFO - postgres_dbhandler - Executing query: SELECT * FROM "student_scores"
+[2025-06-04 18:59:43,164] - INFO - postgres_dbhandler - DataFrame loaded from PostgreSQL table: student_scores
+[2025-06-04 18:59:43,164] - INFO - data_ingestion - Fetched 2000 raw rows from data source.
+[2025-06-04 18:59:43,164] - INFO - postgres_dbhandler - PostgreSQL connection closed
+[2025-06-04 18:59:43,166] - INFO - core - Created directory for Raw Data: 'artifacts/2025_06_04T17_59_41Z/data_ingestion/raw_data'
+[2025-06-04 18:59:43,172] - INFO - core - Raw Data saved to: 'artifacts/2025_06_04T17_59_41Z/data_ingestion/raw_data/raw.csv'
+[2025-06-04 18:59:43,172] - INFO - core - Directory already exists for Raw Data: 'data/raw'
+[2025-06-04 18:59:43,176] - INFO - core - Raw Data saved to: 'data/raw/raw.csv'
+[2025-06-04 18:59:43,177] - INFO - data_ingestion - Raw DataFrame cleaned successfully.
+[2025-06-04 18:59:43,178] - INFO - core - Created directory for Ingested Data: 'artifacts/2025_06_04T17_59_41Z/data_ingestion/ingested_data'
+[2025-06-04 18:59:43,181] - INFO - core - Ingested Data saved to: 'artifacts/2025_06_04T17_59_41Z/data_ingestion/ingested_data/ingested_data.csv'
+[2025-06-04 18:59:43,181] - INFO - data_ingestion - ========== Data Ingestion Completed ==========
+[2025-06-04 18:59:43,181] - INFO - training_pipeline - Data Ingestion Artifact: 
+Data Ingestion Artifact:
+  - Raw Artifact:         'artifacts/2025_06_04T17_59_41Z/data_ingestion/raw_data/raw.csv'
+  - Raw DVC Path:         'data/raw/raw.csv'
+  - Ingested Data Path:   'artifacts/2025_06_04T17_59_41Z/data_ingestion/ingested_data/ingested_data.csv'
+

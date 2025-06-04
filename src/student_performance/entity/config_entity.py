@@ -31,3 +31,16 @@ class PostgresDBHandlerConfig:
             f"  - Input Filepath:   '{self.input_data_filepath.as_posix()}'\n"
             f"  - Input Filepath:   {'table_schema'} (hidden)\n"
         )
+
+@dataclass
+class DataIngestionConfig:
+    root_dir: Path
+    raw_data_filepath: Path
+    dvc_raw_filepath: Path
+    ingested_data_filepath: Path
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.raw_data_filepath = Path(self.raw_data_filepath)
+        self.dvc_raw_filepath = Path(self.dvc_raw_filepath)
+        self.ingested_data_filepath = Path(self.ingested_data_filepath)

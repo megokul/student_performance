@@ -4,4 +4,7 @@ postgres_dbhandler:
   input_data_filename: stud.csv
   dbname: student_performance_db
   table_name: student_scores
-  
+
+data_ingestion:
+  raw_data_filename: raw.csv
+  ingested_data_filename: ingested_data.csv

@@ -59,7 +59,7 @@ class PostgresDBHandler(DBHandler):
             self._connect()
             query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.postgres_config.table_name))
             logger.info(f"Executing query: {query.as_string(self._connection)}")
-            df = pd.read_sql_query(query, self._connection)
+            df = pd.read_sql_query(query.as_string(self._connection), self._connection)
             logger.info(f"DataFrame loaded from PostgreSQL table: {self.postgres_config.table_name}")
             return df
         except Exception as e:

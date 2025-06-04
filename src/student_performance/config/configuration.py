@@ -1,5 +1,5 @@
 from src.student_performance.constants.constants import (
-    CONFIG_DIR,
+    CONFIG_ROOT,
     CONFIG_FILENAME,
     PARAMS_FILENAME,
     SCHEMA_FILENAME,
@@ -7,6 +7,13 @@ from src.student_performance.constants.constants import (
     LOGS_ROOT,
     ARTIFACTS_ROOT,
     POSTGRES_HANDLER_ROOT,
+    DVC_ROOT,
+    DVC_RAW_SUBDIR,
+    DVC_VALIDATED_SUBDIR,
+    DVC_TRANSFORMED_SUBDIR,
+    INGEST_ROOT,
+    INGEST_RAW_SUBDIR,
+    INGEST_INGESTED_SUBDIR,
 )
 from pathlib import Path
 import os
@@ -14,6 +21,7 @@ from src.student_performance.utils.timestamp import get_utc_timestamp
 from src.student_performance.utils.core import read_yaml
 from src.student_performance.entity.config_entity import (
     PostgresDBHandlerConfig,
+    DataIngestionConfig,
 )
 
 class ConfigurationManager:
@@ -31,11 +39,11 @@ class ConfigurationManager:
         self.logs_root = Path(LOGS_ROOT) / timestamp
 
     def _load_configs(self) -> None:
-        config_dir = Path(CONFIG_DIR)
-        config_filepath = config_dir / CONFIG_FILENAME
-        params_filepath = config_dir / PARAMS_FILENAME
-        schema_filepath = config_dir / SCHEMA_FILENAME
-        templates_filepath = config_dir / TEMPLATES_FILENAME
+        config_root = Path(CONFIG_ROOT)
+        config_filepath = config_root / CONFIG_FILENAME
+        params_filepath = config_root / PARAMS_FILENAME
+        schema_filepath = config_root / SCHEMA_FILENAME
+        templates_filepath = config_root / TEMPLATES_FILENAME
 
         self.config = read_yaml(config_filepath)
         self.params = read_yaml(params_filepath)
@@ -59,4 +67,21 @@ class ConfigurationManager:
             table_name=postgres_config.table_name,
             input_data_filepath=input_data_filepath,
             table_schema=table_schema,
+        )
+
+    def get_data_ingestion_config(self) -> DataIngestionConfig:
+        ingestion_config = self.config.data_ingestion
+        root_dir = self.artifacts_root / INGEST_ROOT
+        raw_data_filename = ingestion_config.raw_data_filename
+        ingested_data_filename = ingestion_config.ingested_data_filename
+
+        raw_data_filepath = root_dir / INGEST_RAW_SUBDIR / raw_data_filename
+        dvc_raw_filepath = Path(DVC_ROOT) / DVC_RAW_SUBDIR / raw_data_filename
+        ingested_data_filepath = root_dir / INGEST_INGESTED_SUBDIR / ingested_data_filename
+
+        return DataIngestionConfig(
+            root_dir=root_dir,
+            raw_data_filepath=raw_data_filepath,
+            dvc_raw_filepath=dvc_raw_filepath,
+            ingested_data_filepath=ingested_data_filepath,
         )
