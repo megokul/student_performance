@@ -14,8 +14,9 @@ from src.student_performance.constants.constants import (
     INGEST_ROOT,
     INGEST_RAW_SUBDIR,
     INGEST_INGESTED_SUBDIR,
-    VALIDATION_ROOT,
-    VALIDATION_SUBDIR,
+    VALID_ROOT,
+    VALID_VALIDATED_SUBDIR,
+    VALID_REPORTS_SUBDIR,
 )
 from pathlib import Path
 import os
@@ -91,20 +92,37 @@ class ConfigurationManager:
 
     def get_data_validation_config(self) -> DataValidationConfig:
         validation_config = self.config.data_validation
-        validated_data_filename = validation_config.validated_data_filename
         schema = self.schema.validation_schema
         report_template = self.templates.validation_report
         validation_params = self.params.validation_params
 
-        root_dir = self.artifacts_root / VALIDATION_ROOT
-        validated_data_filepath = root_dir / VALIDATION_SUBDIR / validated_data_filename
+        validated_data_filename = validation_config.validated_data_filename
+        missing_report_filename = validation_config.missing_report_filename
+        duplicates_report_filename = validation_config.duplicates_report_filename
+        drift_report_filename = validation_config.drift_report_filename
+        validation_report_filename = validation_config.validation_report_filename
+        categorical_report_filename = validation_config.categorical_report_filename
+
+        root_dir = self.artifacts_root / VALID_ROOT
+        validated_filepath = root_dir / VALID_VALIDATED_SUBDIR / validated_data_filename
+        missing_report_filepath = root_dir / VALID_REPORTS_SUBDIR / missing_report_filename
+        duplicates_report_filepath = root_dir / VALID_REPORTS_SUBDIR / duplicates_report_filename
+        drift_report_filepath = root_dir / VALID_REPORTS_SUBDIR / drift_report_filename
+        validation_report_filepath = root_dir / VALID_REPORTS_SUBDIR / validation_report_filename
+        categorical_report_filepath =  root_dir / VALID_REPORTS_SUBDIR / categorical_report_filename
+
         dvc_validated_filepath = Path(DVC_ROOT) / DVC_VALIDATED_SUBDIR / validated_data_filename
 
         return DataValidationConfig(
             root_dir=root_dir,
-            validated_data_filepath=validated_data_filepath,
+            validated_filepath=validated_filepath,
             dvc_validated_filepath=dvc_validated_filepath,
             schema=schema,
             report_template=report_template,
             validation_params=validation_params,
+            missing_report_filepath=missing_report_filepath,
+            duplicates_report_filepath=duplicates_report_filepath,
+            drift_report_filepath=drift_report_filepath,
+            validation_report_filepath=validation_report_filepath,
+            categorical_report_filepath=categorical_report_filepath,
         )

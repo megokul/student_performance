@@ -9,7 +9,7 @@ from src.student_performance.entity.artifact_entity import DataIngestionArtifact
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
 from src.student_performance.utils.core import (
-    read_csv, save_to_csv, save_to_yaml, save_to_json
+    read_csv, save_to_csv, save_to_yaml
 )
 from src.student_performance.utils.timestamp import get_utc_timestamp
 
@@ -25,7 +25,6 @@ class DataValidation:
             self.base_df = None
             self.drift_check_performed = False
             self.timestamp = get_utc_timestamp()
-            self.validated_filepath = None
 
             if self.params.drift_detection.enabled and self.validation_config.dvc_validated_filepath.exists():
                 self.base_df = read_csv(self.validation_config.dvc_validated_filepath)
@@ -66,9 +65,10 @@ class DataValidation:
 
     def __check_missing_values(self):
         try:
+            vcfg = self.validation_config
             missing = self.df.isnull().sum().to_dict()
             missing["timestamp"] = self.timestamp
-            save_to_yaml(missing, self.validation_config.missing_report_filepath, label="Missing Value Report")
+            save_to_yaml(missing, vcfg.missing_report_filepath, label="Missing Value Report")
 
             self.non_critical_checks.no_missing_values = not any(
                 v > 0 for v in missing.values() if isinstance(v, (int, float))
@@ -79,6 +79,7 @@ class DataValidation:
 
     def __check_duplicates(self):
         try:
+            vcfg = self.validation_config
             before = len(self.df)
             self.df = self.df.drop_duplicates()
             after = len(self.df)
@@ -88,35 +89,79 @@ class DataValidation:
                 "duplicate_rows_removed": duplicates_removed,
                 "timestamp": self.timestamp
             }
-            save_to_json(result, self.validation_config.duplicates_report_filepath, label="Duplicates Report")
+            save_to_yaml(result, vcfg.duplicates_report_filepath, label="Duplicates Report")
             self.non_critical_checks.no_duplicate_rows = (duplicates_removed == 0)
         except Exception as e:
             self.non_critical_checks.no_duplicate_rows = False
             raise StudentPerformanceError(e, logger) from e
 
+    def __check_categorical_values(self):
+        try:
+            vcfg = self.validation_config
+            allowed_values = self.schema.get("allowed_values", {})
+            violations = {}
+
+            for col, allowed in allowed_values.items():
+                if col not in self.df.columns:
+                    continue
+
+                actual_values = set(self.df[col].dropna().unique())
+                unexpected = actual_values - set(allowed)
+
+                if unexpected:
+                    violations[col] = {
+                        "unexpected_values": sorted(list(unexpected)),
+                        "expected_values": allowed
+                    }
+
+            result = {
+                "violations_found": bool(violations),
+                "details": violations,
+                "timestamp": self.timestamp
+            }
+
+            save_to_yaml(result, vcfg.categorical_report_filepath, label="Categorical Values Report")
+            self.non_critical_checks.categorical_values_match = not bool(violations)
+
+        except Exception as e:
+            self.non_critical_checks.categorical_values_match = False
+            raise StudentPerformanceError(e, logger) from e
+
     def __check_data_drift(self):
         try:
+            vcfg = self.validation_config
+            drift_results = {
+                "timestamp": self.timestamp,
+                "drift_check_performed": False
+            }
+
             if self.base_df is None:
                 logger.info("Base data not available. Skipping drift check.")
+                drift_results["reason"] = "Base dataset not found. Drift check skipped."
+                save_to_yaml(drift_results, vcfg.drift_report_filepath, label="Drift Report")
+                self.critical_checks.no_data_drift = True
                 return
 
             drift_detected = False
-            drift_results = {}
+            drift_results.update({
+                "drift_check_performed": True,
+                "drift_method": self.params.drift_detection.method,
+                "columns": {}
+            })
 
             for col in self.df.columns:
                 if col not in self.base_df.columns:
                     continue
                 _, p_value = ks_2samp(self.base_df[col], self.df[col])
                 drift = p_value < self.params.drift_detection.p_value_threshold
-                drift_results[col] = {"p_value": float(p_value), "drift": drift}
+                drift_results["columns"][col] = {"p_value": float(p_value), "drift": drift}
                 if drift:
                     drift_detected = True
 
             drift_results["drift_detected"] = drift_detected
-            drift_results["timestamp"] = self.timestamp
-            save_to_yaml(drift_results, self.validation_config.drift_report_filepath, label="Drift Report")
-
+            save_to_yaml(drift_results, vcfg.drift_report_filepath, label="Drift Report")
             self.critical_checks.no_data_drift = not drift_detected
+
         except Exception as e:
             self.critical_checks.no_data_drift = False
             raise StudentPerformanceError(e, logger) from e
@@ -160,19 +205,27 @@ class DataValidation:
             logger.info("Step 3: Checking for duplicates")
             self.__check_duplicates()
 
+            logger.info("Step 4: Checking categorical column values")
+            self.__check_categorical_values()
+
             if self.params.drift_detection.enabled:
-                logger.info("Step 4: Performing drift check")
+                logger.info("Step 5: Performing drift check")
                 self.__check_data_drift()
 
-            logger.info("Step 5: Generating validation report")
+            logger.info("Step 6: Generating validation report")
             report = self.__generate_report()
             save_to_yaml(report, self.validation_config.validation_report_filepath, label="Validation Report")
 
             validation_passed = all(self.critical_checks.values())
 
-            logger.info("Step 6: Saving validated data if validation passes")
+            logger.info("Step 7: Saving validated data if validation passes")
             if validation_passed:
-                save_to_csv(self.df, self.validation_config.validated_filepath, self.validation_config.dvc_validated_filepath, label="Validated Data")
+                save_to_csv(
+                    self.df,
+                    self.validation_config.validated_filepath,
+                    self.validation_config.dvc_validated_filepath,
+                    label="Validated Data"
+                )
             else:
                 logger.warning("Validation failed. Validated data not saved.")
 

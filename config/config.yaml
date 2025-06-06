@@ -5,9 +5,16 @@ postgres_dbhandler:
   dbname: student_performance_db
   table_name: student_scores
 
+# Data ingestion configuration
 data_ingestion:
   raw_data_filename: raw.csv
   ingested_data_filename: ingested_data.csv
 
+# Data validation configuration
 data_validation:
-  validated_data_filename: validated.csv
+  validated_data_filename: validated_data.csv
+  missing_report_filename: missing_values_report.yaml
+  duplicates_report_filename: duplicates_report.yaml
+  drift_report_filename: drift_report.yaml
+  validation_report_filename: validation_report.yaml
+  categorical_report_filename: categorical_report.yaml

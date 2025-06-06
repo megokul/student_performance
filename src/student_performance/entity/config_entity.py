@@ -48,13 +48,23 @@ class DataIngestionConfig:
 @dataclass
 class DataValidationConfig:
     root_dir: Path
-    validated_data_filepath: Path
+    validated_filepath: Path
     dvc_validated_filepath: Path
     schema: ConfigBox
     report_template: ConfigBox
     validation_params: ConfigBox
+    missing_report_filepath: Path
+    duplicates_report_filepath: Path
+    drift_report_filepath: Path
+    validation_report_filepath: Path
+    categorical_report_filepath: Path
 
     def __post_init__(self):
         self.root_dir = Path(self.root_dir)
-        self.validated_data_filepath = Path(self.validated_data_filepath)
+        self.validated_filepath = Path(self.validated_filepath)
         self.dvc_validated_filepath = Path(self.dvc_validated_filepath)
+        self.missing_report_filepath = Path(self.missing_report_filepath)
+        self.duplicates_report_filepath = Path(self.duplicates_report_filepath)
+        self.drift_report_filepath = Path(self.drift_report_filepath)
+        self.validation_report_filepath = Path(self.validation_report_filepath)
+        self.categorical_report_filepath = Path(self.categorical_report_filepath)
