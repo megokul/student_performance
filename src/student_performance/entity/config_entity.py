@@ -44,3 +44,17 @@ class DataIngestionConfig:
         self.raw_data_filepath = Path(self.raw_data_filepath)
         self.dvc_raw_filepath = Path(self.dvc_raw_filepath)
         self.ingested_data_filepath = Path(self.ingested_data_filepath)
+
+@dataclass
+class DataValidationConfig:
+    root_dir: Path
+    validated_data_filepath: Path
+    dvc_validated_filepath: Path
+    schema: ConfigBox
+    report_template: ConfigBox
+    validation_params: ConfigBox
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.validated_data_filepath = Path(self.validated_data_filepath)
+        self.dvc_validated_filepath = Path(self.dvc_validated_filepath)

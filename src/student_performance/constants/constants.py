@@ -17,3 +17,6 @@ DVC_ROOT = "data"
 DVC_RAW_SUBDIR = "raw"
 DVC_VALIDATED_SUBDIR = "validated"
 DVC_TRANSFORMED_SUBDIR = "transformed"
+
+VALIDATION_ROOT = "data_validation"
+VALIDATION_SUBDIR = "validated"

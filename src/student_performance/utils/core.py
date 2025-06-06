@@ -54,7 +54,7 @@ def save_to_csv(df: pd.DataFrame, *paths: Path, label: str):
             logger.info(f"{label} saved to: '{path.as_posix()}'")
     except Exception as e:
         msg = f"Failed to save CSV to: '{path.as_posix()}' — {e}"
-        raise StudentPerformanceError(msg, logger) from e
+        raise StudentPerformanceError(e, msg) from e
 
 
 @ensure_annotations
@@ -75,4 +75,46 @@ def read_csv(filepath: Path) -> pd.DataFrame:
         return df
     except Exception as e:
         msg = f"Failed to read CSV from: '{filepath.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+@ensure_annotations
+def save_to_yaml(data: dict, *paths: Path, label: str):
+    """
+    Write a dict out to YAML, always using UTF-8.
+    """
+    try:
+        for path in paths:
+            path = Path(path)
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            # Write UTF-8
+            with open(path, "w", encoding="utf-8") as file:
+                yaml.dump(data, file, sort_keys=False)
+
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+    except Exception as e:
+        msg = f"Failed to read CSV from: '{path.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+@ensure_annotations
+def save_to_json(data: dict, *paths: Path, label: str):
+    try:
+        for path in paths:
+            path = Path(path)
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+    except Exception as e:
+        msg = f"Failed to read CSV from: '{path.as_posix()}' — {e}"
         raise StudentPerformanceError(e, msg) from e

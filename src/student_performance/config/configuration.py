@@ -14,6 +14,8 @@ from src.student_performance.constants.constants import (
     INGEST_ROOT,
     INGEST_RAW_SUBDIR,
     INGEST_INGESTED_SUBDIR,
+    VALIDATION_ROOT,
+    VALIDATION_SUBDIR,
 )
 from pathlib import Path
 import os
@@ -22,6 +24,7 @@ from src.student_performance.utils.core import read_yaml
 from src.student_performance.entity.config_entity import (
     PostgresDBHandlerConfig,
     DataIngestionConfig,
+    DataValidationConfig,
 )
 
 class ConfigurationManager:
@@ -71,10 +74,10 @@ class ConfigurationManager:
 
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         ingestion_config = self.config.data_ingestion
-        root_dir = self.artifacts_root / INGEST_ROOT
         raw_data_filename = ingestion_config.raw_data_filename
         ingested_data_filename = ingestion_config.ingested_data_filename
 
+        root_dir = self.artifacts_root / INGEST_ROOT
         raw_data_filepath = root_dir / INGEST_RAW_SUBDIR / raw_data_filename
         dvc_raw_filepath = Path(DVC_ROOT) / DVC_RAW_SUBDIR / raw_data_filename
         ingested_data_filepath = root_dir / INGEST_INGESTED_SUBDIR / ingested_data_filename
@@ -84,4 +87,24 @@ class ConfigurationManager:
             raw_data_filepath=raw_data_filepath,
             dvc_raw_filepath=dvc_raw_filepath,
             ingested_data_filepath=ingested_data_filepath,
+        )
+
+    def get_data_validation_config(self) -> DataValidationConfig:
+        validation_config = self.config.data_validation
+        validated_data_filename = validation_config.validated_data_filename
+        schema = self.schema.validation_schema
+        report_template = self.templates.validation_report
+        validation_params = self.params.validation_params
+
+        root_dir = self.artifacts_root / VALIDATION_ROOT
+        validated_data_filepath = root_dir / VALIDATION_SUBDIR / validated_data_filename
+        dvc_validated_filepath = Path(DVC_ROOT) / DVC_VALIDATED_SUBDIR / validated_data_filename
+
+        return DataValidationConfig(
+            root_dir=root_dir,
+            validated_data_filepath=validated_data_filepath,
+            dvc_validated_filepath=dvc_validated_filepath,
+            schema=schema,
+            report_template=report_template,
+            validation_params=validation_params,
         )

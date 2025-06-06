@@ -19,3 +19,17 @@ class DataIngestionArtifact:
             f"  - Raw DVC Path:         '{raw_dvc_str}'\n"
             f"  - Ingested Data Path:   '{ingested_data_str}'\n"
         )
+
+@dataclass(frozen=True)
+class DataValidationArtifact:
+    validated_filepath: Path
+    validation_status: bool
+
+    def __repr__(self) -> str:
+        validated_str = self.validated_filepath.as_posix() if self.validated_filepath else "None"
+
+        return (
+            "\nData Validation Artifact:\n"
+            f"  - Validated Data Path: '{validated_str}'\n"
+            f"  - Validation Status:   '{self.validation_status}'\n"
+        )

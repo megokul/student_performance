@@ -1,1 +1,18 @@
-key: value
+validation_report:
+  timestamp: ""
+  
+  validation_status: null
+  critical_passed: null
+  non_critical_passed: null
+
+  schema_check_type: ""
+  drift_check_method: ""
+
+  check_results:
+    critical_checks:
+      schema_is_match: null
+      no_data_drift: null
+
+    non_critical_checks:
+      no_missing_values: null
+      no_duplicate_rows: null

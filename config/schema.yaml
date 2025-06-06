@@ -63,3 +63,16 @@ table_schema:
         constraints:
           min: 0
           max: 100
+
+validation_schema:
+  columns:
+    id: int64
+    gender: object
+    race_ethnicity: object
+    parental_level_of_education: object
+    lunch: object
+    test_preparation_course: object
+    math_score: int64
+    reading_score: int64
+    writing_score: int64
+

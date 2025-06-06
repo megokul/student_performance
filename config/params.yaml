@@ -1,1 +1,10 @@
-key: value
+# Parameters for drift detection during data validation
+validation_params:
+  drift_detection:
+    enabled: true
+    method: ks_test
+    p_value_threshold: 0.05
+
+  schema_check:
+    enabled: true
+    method: hash
