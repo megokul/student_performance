@@ -8,3 +8,53 @@ validation_params:
   schema_check:
     enabled: true
     method: hash
+
+
+transformation_params:
+  data_split:
+    train_size: 0.6
+    val_size: 0.2
+    test_size: 0.2
+    random_state: 42
+    stratify: false
+
+  steps:
+    x:
+      - imputation
+      - encoding
+      - standardization
+    y:
+      - compute_target
+      - standardization
+
+  methods:
+    x:
+      imputation:
+        method: knn
+        missing_values: null
+        n_neighbors: 3
+        weights: uniform
+
+      encoding:
+        method: one_hot
+        handle_unknown: ignore
+
+      standardization:
+        method: standard_scaler
+        with_mean: true
+        with_std: true
+
+    y:
+      compute_target:
+        method: mean_of_columns
+        output_column: mean_score
+        input_column:
+          - math_score
+          - reading_score
+          - writing_score
+
+      standardization:
+        method: standard_scaler
+        with_mean: true
+        with_std: true
+

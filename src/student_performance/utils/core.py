@@ -5,6 +5,8 @@ from box.exceptions import BoxValueError, BoxTypeError, BoxKeyError
 from ensure import ensure_annotations
 import yaml
 import json
+import numpy as np
+import pandas as pd
 
 from src.student_performance.logging import logger
 from src.student_performance.exception.exception import StudentPerformanceError
@@ -119,3 +121,86 @@ def save_to_json(data: dict, *paths: Path, label: str):
     except Exception as e:
         msg = f"Failed to read CSV from: '{path.as_posix()}' — {e}"
         raise StudentPerformanceError(e, msg) from e
+
+
+@ensure_annotations
+def save_object(obj: object, path: Path, label: str):
+    """
+    Saves a serializable object using joblib to the specified path.
+
+    Args:
+        obj (object): The object to serialize.
+        path (Path): The path to save the object.
+        label (str): Label used for logging context.
+    """
+    try:
+        path = Path(path)
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+        else:
+            logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+        joblib.dump(obj, path)
+        logger.info(f"{label} saved to: '{path.as_posix()}'")
+
+    except Exception as e:
+        msg = f"Failed to save {label} to: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e
+
+
+@ensure_annotations
+def save_array(array: np.ndarray | pd.Series, *paths: Path, label: str):
+    """
+    Saves a NumPy array or pandas Series to the specified paths in `.npy` format.
+
+    Args:
+        array (Union[np.ndarray, pd.Series]): Data to save.
+        *paths (Path): One or more file paths.
+        label (str): Label for logging.
+    """
+    try:
+        array = np.asarray(array)
+
+        for path in paths:
+            path = Path(path)
+
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            np.save(path, array)
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+
+    except Exception as e:
+        msg = f"Failed to save {label} to: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e
+
+
+@ensure_annotations
+def load_array(path: Path, label: str) -> np.ndarray:
+    """
+    Loads a NumPy array from the specified `.npy` file path.
+
+    Args:
+        path (Path): Path to the `.npy` file.
+        label (str): Label for logging.
+
+    Returns:
+        np.ndarray: Loaded NumPy array.
+    """
+    try:
+        path = Path(path)
+
+        if not path.exists():
+            raise FileNotFoundError(f"{label} file not found at path: '{path.as_posix()}'")
+
+        array = np.load(path)
+        logger.info(f"{label} loaded successfully from: '{path.as_posix()}'")
+        return array
+
+    except Exception as e:
+        msg = f"Failed to load {label} from: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e

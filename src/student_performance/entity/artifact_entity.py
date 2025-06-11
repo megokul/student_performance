@@ -33,3 +33,28 @@ class DataValidationArtifact:
             f"  - Validated Data Path: '{validated_str}'\n"
             f"  - Validation Status:   '{self.validation_status}'\n"
         )
+
+
+@dataclass(frozen=True)
+class DataTransformationArtifact:
+    x_train_filepath: Path
+    y_train_filepath: Path
+    x_val_filepath: Path
+    y_val_filepath: Path
+    x_test_filepath: Path
+    y_test_filepath: Path
+    x_preprocessor_filepath: Path
+    y_preprocessor_filepath: Path
+
+    def __repr__(self) -> str:
+        return (
+            "\nData Transformation Artifact:\n"
+            f"  - X Train Path:         '{self.x_train_filepath.as_posix()}'\n"
+            f"  - Y Train Path:         '{self.y_train_filepath.as_posix()}'\n"
+            f"  - X Val Path:           '{self.x_val_filepath.as_posix()}'\n"
+            f"  - Y Val Path:           '{self.y_val_filepath.as_posix()}'\n"
+            f"  - X Test Path:          '{self.x_test_filepath.as_posix()}'\n"
+            f"  - Y Test Path:          '{self.y_test_filepath.as_posix()}'\n"
+            f"  - X Preprocessor Path:  '{self.x_preprocessor_filepath.as_posix()}'\n"
+            f"  - Y Preprocessor Path:  '{self.y_preprocessor_filepath.as_posix()}'\n"
+        )

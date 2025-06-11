@@ -26,6 +26,7 @@ from src.student_performance.entity.config_entity import (
     PostgresDBHandlerConfig,
     DataIngestionConfig,
     DataValidationConfig,
+    DataTransformationConfig,
 )
 
 class ConfigurationManager:
@@ -125,4 +126,52 @@ class ConfigurationManager:
             drift_report_filepath=drift_report_filepath,
             validation_report_filepath=validation_report_filepath,
             categorical_report_filepath=categorical_report_filepath,
+        )
+
+    def get_data_transformation_config(self) -> DataTransformationConfig:
+        transformation_config = self.config.data_transformation
+        transformation_params = self.params.transformation_params
+        output_column = transformation_params.methods.y.compute_target.output_column
+
+        root_dir = self.artifacts_root / "data_transformation"
+
+        # Local paths
+        x_train = root_dir / transformation_config.x_train_filename
+        y_train = root_dir / transformation_config.y_train_filename
+        x_val = root_dir / transformation_config.x_val_filename
+        y_val = root_dir / transformation_config.y_val_filename
+        x_test = root_dir / transformation_config.x_test_filename
+        y_test = root_dir / transformation_config.y_test_filename
+
+        # DVC-tracked paths
+        dvc_root = Path(DVC_ROOT) / DVC_TRANSFORMED_SUBDIR
+        x_train_dvc = dvc_root / transformation_config.x_train_filename
+        y_train_dvc = dvc_root / transformation_config.y_train_filename
+        x_val_dvc = dvc_root / transformation_config.x_val_filename
+        y_val_dvc = dvc_root / transformation_config.y_val_filename
+        x_test_dvc = dvc_root / transformation_config.x_test_filename
+        y_test_dvc = dvc_root / transformation_config.y_test_filename
+
+        # Preprocessor objects
+        x_processor_path = root_dir / transformation_config.x_preprocessor_filename
+        y_processor_path = root_dir / transformation_config.y_preprocessor_filename
+
+        return DataTransformationConfig(
+            root_dir=root_dir,
+            target_column=output_column,
+            transformation_params=transformation_params,
+            x_train_filepath=x_train,
+            y_train_filepath=y_train,
+            x_val_filepath=x_val,
+            y_val_filepath=y_val,
+            x_test_filepath=x_test,
+            y_test_filepath=y_test,
+            x_train_dvc_filepath=x_train_dvc,
+            y_train_dvc_filepath=y_train_dvc,
+            x_val_dvc_filepath=x_val_dvc,
+            y_val_dvc_filepath=y_val_dvc,
+            x_test_dvc_filepath=x_test_dvc,
+            y_test_dvc_filepath=y_test_dvc,
+            x_preprocessor_filepath=x_processor_path,
+            y_preprocessor_filepath=y_processor_path,
         )

@@ -1,0 +1,1170 @@
+
+📦 Project Structure of: e:\MyProjects\student_performance
+
+📄 .env
+📄 .gitignore
+📄 Dockerfile
+📄 app.py
+📁 artifacts/
+    📁 2025_06_08T02_47_45Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_08T02_58_11Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_11T14_20_11Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_11T14_21_21Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_11T14_24_09Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_11T14_24_38Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_11T14_26_14Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+📁 config/
+    📄 config.yaml
+    📄 params.yaml
+    📄 schema.yaml
+    📄 templates.yaml
+📁 data/
+    📁 raw/
+        📄 raw.csv
+    📁 validated/
+        📄 validated_data.csv
+📄 debug.py
+📁 logs/
+    📁 2025_06_08T02_47_45Z/
+        📄 2025_06_08T02_47_45Z.log
+    📁 2025_06_08T02_58_11Z/
+        📄 2025_06_08T02_58_11Z.log
+    📁 2025_06_11T14_09_30Z/
+        📄 2025_06_11T14_09_30Z.log
+    📁 2025_06_11T14_11_03Z/
+        📄 2025_06_11T14_11_03Z.log
+    📁 2025_06_11T14_20_11Z/
+        📄 2025_06_11T14_20_11Z.log
+    📁 2025_06_11T14_21_21Z/
+        📄 2025_06_11T14_21_21Z.log
+    📁 2025_06_11T14_24_09Z/
+        📄 2025_06_11T14_24_09Z.log
+    📁 2025_06_11T14_24_38Z/
+        📄 2025_06_11T14_24_38Z.log
+    📁 2025_06_11T14_26_14Z/
+        📄 2025_06_11T14_26_14Z.log
+    📁 2025_06_11T15_45_36Z/
+        📄 2025_06_11T15_45_36Z.log
+    📁 2025_06_11T16_21_13Z/
+        📄 2025_06_11T16_21_13Z.log
+📄 main.py
+📁 notebook/
+    📄 research.ipynb
+📄 project_code_dump_index.txt
+📄 project_code_dump_part1.txt
+📄 project_code_dump_part2.txt
+📄 project_dump.py
+📄 project_template.py
+📄 requirements.txt
+📁 research/
+    📄 research.ipynb
+📄 setup.py
+📁 src/
+    📁 student_performance/
+        📄 __init__.py
+        📁 components/
+            📄 __init__.py
+            📄 data_ingestion.py
+            📄 data_transformation.py
+            📄 data_validation.py
+        📁 config/
+            📄 __init__.py
+            📄 configuration.py
+        📁 constants/
+            📄 __init__.py
+            📄 constants.py
+        📁 data_processors/
+            📄 __init__.py
+            📄 column_math_factory.py
+            📄 encoder_factory.py
+            📄 imputer_factory.py
+            📄 preprocessor_builder.py
+            📄 scaler_factory.py
+        📁 dbhandler/
+            📄 __init__.py
+            📄 base_handler.py
+            📄 postgres_dbhandler.py
+        📁 entity/
+            📄 __init__.py
+            📄 artifact_entity.py
+            📄 config_entity.py
+        📁 exception/
+            📄 __init__.py
+            📄 exception.py
+        📁 logging/
+            📄 __init__.py
+            📄 app_logger.py
+        📁 pipeline/
+            📄 __init__.py
+            📄 training_pipeline.py
+        📁 utils/
+            📄 __init__.py
+            📄 core.py
+            📄 timestamp.py
+📁 student_data/
+    📄 stud.csv
+📁 templates/
+    📄 index.html
+
+--- CODE DUMP | PART 2 of 3 ---
+
+
+================================================================================
+# PY FILE: src\student_performance\constants\constants.py
+================================================================================
+
+CONFIG_ROOT = "config"
+CONFIG_FILENAME = "config.yaml"
+PARAMS_FILENAME = "params.yaml"
+SCHEMA_FILENAME = "schema.yaml"
+TEMPLATES_FILENAME = "templates.yaml"
+
+LOGS_ROOT = "logs"
+
+ARTIFACTS_ROOT = "artifacts"
+
+POSTGRES_HANDLER_ROOT = "mongo_handler"
+INGEST_ROOT = "data_ingestion"
+INGEST_RAW_SUBDIR = "raw_data"
+INGEST_INGESTED_SUBDIR = "ingested_data"
+
+DVC_ROOT = "data"
+DVC_RAW_SUBDIR = "raw"
+DVC_VALIDATED_SUBDIR = "validated"
+DVC_TRANSFORMED_SUBDIR = "transformed"
+
+VALID_ROOT = "data_validation"
+VALID_VALIDATED_SUBDIR = "validated"
+VALID_REPORTS_SUBDIR = "reports"
+
+X_TRAIN_LABEL = "X_train"
+Y_TRAIN_LABEL = "y_train"
+X_VAL_LABEL = "X_val"
+Y_VAL_LABEL = "y_val"
+X_TEST_LABEL = "X_test"
+Y_TEST_LABEL = "y_test"
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\column_math_factory.py
+================================================================================
+
+from typing import Literal, Self
+import pandas as pd
+import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
+from ensure import ensure_annotations
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+# Define allowed operations
+ColumnMathOperation = Literal[
+    "add", "subtract", "multiply", "divide",
+    "mean", "sqrt", "square", "power"
+]
+
+
+class ColumnMathTransformer(BaseEstimator, TransformerMixin):
+    """
+    Transformer that performs mathematical operations on specified columns.
+
+    Supported operations:
+        - add: sum of multiple columns
+        - subtract: subtract columns sequentially (col1 - col2 - col3 ...)
+        - multiply: product of multiple columns
+        - divide: divide columns sequentially (col1 / col2 / col3 ...)
+        - mean: average of specified columns
+        - sqrt: element-wise square root of first column
+        - square: element-wise square of first column
+        - power: first column raised to power of second
+
+    Raises:
+        StudentPerformanceError: For unsupported operations or missing params
+    """
+
+    @ensure_annotations
+    def __init__(
+        self,
+        columns: list[str],
+        operation: ColumnMathOperation,
+        output_column: str
+    ) -> None:
+        self.columns = columns
+        self.operation = operation.lower()
+        self.output_column = output_column
+
+    @ensure_annotations
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> Self:
+        return self
+
+    @ensure_annotations
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        try:
+            df = X.copy()
+
+            if self.operation == "add":
+                df[self.output_column] = df[self.columns].sum(axis=1)
+
+            elif self.operation == "subtract":
+                df[self.output_column] = df[self.columns].iloc[:, 0]
+                for col in self.columns[1:]:
+                    df[self.output_column] -= df[col]
+
+            elif self.operation == "multiply":
+                df[self.output_column] = df[self.columns].prod(axis=1)
+
+            elif self.operation == "divide":
+                df[self.output_column] = df[self.columns].iloc[:, 0]
+                for col in self.columns[1:]:
+                    df[self.output_column] /= df[col]
+
+            elif self.operation == "mean":
+                df[self.output_column] = df[self.columns].mean(axis=1)
+
+            elif self.operation == "sqrt":
+                if len(self.columns) != 1:
+                    raise ValueError("sqrt operation requires exactly 1 column.")
+                df[self.output_column] = np.sqrt(df[self.columns[0]])
+
+            elif self.operation == "square":
+                if len(self.columns) != 1:
+                    raise ValueError("square operation requires exactly 1 column.")
+                df[self.output_column] = df[self.columns[0]] ** 2
+
+            elif self.operation == "power":
+                if len(self.columns) != 2:
+                    raise ValueError("power operation requires exactly 2 columns.")
+                df[self.output_column] = df[self.columns[0]] ** df[self.columns[1]]
+
+            else:
+                raise ValueError(f"Unsupported operation: {self.operation}")
+
+            logger.info(
+                "Applied '%s' operation on columns: %s → '%s'",
+                self.operation,
+                self.columns,
+                self.output_column,
+            )
+            return df
+
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\encoder_factory.py
+================================================================================
+
+"""Factory for building encoding pipelines."""
+
+from typing import Optional
+
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class EncoderFactory:
+    """
+    Factory to build encoding pipelines for categorical features.
+    Supports: onehot, ordinal.
+    Easily extendable with new encoders.
+    """
+    _SUPPORTED_METHODS = {
+        "onehot": OneHotEncoder,
+        "ordinal": OrdinalEncoder,
+    }
+
+    @staticmethod
+    @ensure_annotations
+    def get_encoder_pipeline(
+        method: str,
+        params: Optional[dict] = None,
+        is_target: bool = False,
+    ) -> Pipeline:
+        """
+        Returns a sklearn Pipeline with a single encoder step.
+
+        Args:
+            method: Encoding method name.
+            params: Parameters for the encoder constructor.
+            is_target: Whether this encoder is for the target variable.
+                       Not used by default but available for customization.
+
+        Returns:
+            Pipeline: A pipeline containing one ('encoder', encoder_instance) step.
+        """
+        try:
+            if method not in EncoderFactory._SUPPORTED_METHODS:
+                raise ValueError(f"Unsupported encoding method: {method}")
+
+            encoder_class = EncoderFactory._SUPPORTED_METHODS[method]
+            encoder = encoder_class(**(params or {}))
+
+            return Pipeline(steps=[("encoder", encoder)])
+
+        except Exception as exc:
+            raise StudentPerformanceError(exc, logger) from exc
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\imputer_factory.py
+================================================================================
+
+"""Factory for building encoding pipelines."""
+
+from typing import Optional
+
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class ImputerFactory:
+    """
+    Factory to build imputation pipelines for numerical data.
+    Supports: knn, simple, iterative, and custom methods.
+    Easily extendable with new methods.
+    """
+    _SUPPORTED_METHODS = {
+        "knn": KNNImputer,
+        "simple": SimpleImputer,
+        "iterative": IterativeImputer,
+    }
+
+    @staticmethod
+    @ensure_annotations
+    def get_imputer_pipeline(
+        method: str,
+        params: Optional[dict] = None,
+        is_target: bool = False,
+    ) -> Pipeline:
+        """
+        Returns a sklearn Pipeline with a single imputer step.
+
+        Args:
+            method: Imputation method name.
+            params: Parameters for the imputer constructor.
+            is_target: Whether this imputer is for the target variable.
+                       Not used by default but available for customization.
+
+        Returns:
+            Pipeline: A pipeline containing one ('imputer', imputer_instance) step.
+        """
+        try:
+            if method == "custom":
+                if not params or "custom_callable" not in params:
+                    raise ValueError(
+                        "Custom imputer requires a 'custom_callable' in params."
+                    )
+                imputer = params["custom_callable"]()
+            else:
+                ImputerClass = ImputerFactory._SUPPORTED_METHODS.get(method)
+                if not ImputerClass:
+                    raise ValueError(f"Unsupported imputation method: {method}")
+                imputer = ImputerClass(**(params or {}))
+
+            return Pipeline(steps=[("imputer", imputer)])
+
+        except Exception as exc:
+            raise StudentPerformanceError(exc, logger) from exc
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\preprocessor_builder.py
+================================================================================
+
+# FILE: src/student_performance/data_processors/preprocessor_builder.py
+
+from typing import Tuple
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+
+from src.student_performance.data_processors.imputer_factory import (
+    ImputerFactory,
+)
+from src.student_performance.data_processors.scaler_factory import (
+    ScalerFactory,
+)
+from src.student_performance.data_processors.encoder_factory import (
+    EncoderFactory,
+)
+from student_performance.data_processors.column_math_factory import (
+    MeanOfColumnsTargetComputer,
+)
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class PreprocessorBuilder:
+    """
+    Builds preprocessing pipelines for features (X) and target (y) using
+    ordered steps defined in params.yaml. Skips any steps set to 'none'.
+    """
+
+    STEP_BUILDERS = {
+        "imputation": ImputerFactory.get_imputer_pipeline,
+        "encoding": EncoderFactory.get_encoder_pipeline,
+        "standardization": ScalerFactory.get_scaler_pipeline,
+        "compute_target": (
+            lambda method, params: MeanOfColumnsTargetComputer(
+                source_columns=params.get("source_columns", []),
+                output_column=params.get("output_column", "target"),
+            )
+        ),
+    }
+
+    @ensure_annotations
+    def __init__(self, steps: dict, methods: dict) -> None:
+        self.steps = steps or {}
+        self.methods = methods or {}
+
+    def _build_pipeline(self, section: str) -> Pipeline:
+        try:
+            pipeline_steps = []
+            ordered_steps = self.steps.get(section, [])
+            method_map = self.methods.get(section, {})
+
+            for step_name in ordered_steps:
+                params = method_map.get(step_name, {})
+                method = params.get("method")
+
+                # Skip disabled or undefined
+                if not method or str(method).lower() == "none":
+                    logger.info(
+                        f"Skipping '{step_name}' for '{section}' because it is disabled."
+                    )
+                    continue
+
+                builder = self.STEP_BUILDERS.get(step_name)
+                if not builder:
+                    raise ValueError(
+                        f"Unsupported step '{step_name}' in '{section}' pipeline."
+                    )
+
+                component = builder(method, params)
+                pipeline_steps.append((step_name, component))
+
+            return Pipeline(steps=pipeline_steps)
+
+        except Exception as exc:
+            raise StudentPerformanceError(exc, logger) from exc
+
+    @ensure_annotations
+    def build(self) -> Tuple[Pipeline, Pipeline]:
+        """
+        Build and return a tuple of (x_pipeline, y_pipeline).
+        """
+        try:
+            x_pipeline = self._build_pipeline("x")
+            y_pipeline = self._build_pipeline("y")
+            return x_pipeline, y_pipeline
+        except Exception as exc:
+            raise StudentPerformanceError(exc, logger) from exc
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\scaler_factory.py
+================================================================================
+
+"""Factory for building scaling pipelines for numerical data."""
+
+from typing import Optional
+
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class ScalerFactory:
+    """
+    Factory to build scaling pipelines for numerical features.
+    Supports: standard, minmax, robust.
+    Easily extendable with new scalers.
+    """
+    _SUPPORTED_METHODS = {
+        "standard": StandardScaler,
+        "minmax": MinMaxScaler,
+        "robust": RobustScaler,
+    }
+
+    @staticmethod
+    @ensure_annotations
+    def get_scaler_pipeline(
+        method: str,
+        params: Optional[dict] = None,
+        is_target: bool = False,
+    ) -> Pipeline:
+        """
+        Returns a sklearn Pipeline with a single scaler step.
+
+        Args:
+            method: Scaling method name.
+            params: Parameters for the scaler constructor.
+            is_target: Whether this scaler is for the target variable (unused by default).
+
+        Returns:
+            Pipeline: Pipeline containing one ('scaler', scaler_instance).
+        """
+        try:
+            if method not in ScalerFactory._SUPPORTED_METHODS:
+                raise ValueError(f"Unsupported scaler method: {method}")
+
+            scaler_cls = ScalerFactory._SUPPORTED_METHODS[method]
+            scaler = scaler_cls(**(params or {}))
+
+            return Pipeline(steps=[("scaler", scaler)])
+
+        except Exception as exc:
+            raise StudentPerformanceError(exc, logger) from exc
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\base_handler.py
+================================================================================
+
+from abc import ABC, abstractmethod
+from pathlib import Path
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class DBHandler(ABC):
+    """
+    Abstract base class for all database/storage handlers.
+    Enables unified behavior across PostgreSQL, MongoDB, CSV, etc.
+    """
+
+    def __enter__(self) -> "DBHandler":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        try:
+            self.close()
+        except Exception as e:
+            msg = "Error closing DBHandler."
+            raise StudentPerformanceError(e, msg) from e
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
+    def load_from_source(self) -> pd.DataFrame:
+        pass
+
+    def load_from_csv(self, source: Path) -> pd.DataFrame:
+        try:
+            df = pd.read_csv(source)
+            logger.info(f"DataFrame loaded from CSV: {source}")
+            return df
+        except Exception as e:
+            msg = f"Failed to load DataFrame from CSV: '{source}'"
+            raise StudentPerformanceError(e, msg) from e
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\postgres_dbhandler.py
+================================================================================
+
+import psycopg2
+from psycopg2 import sql
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.entity.config_entity import PostgresDBHandlerConfig
+from box import ConfigBox
+
+
+class PostgresDBHandler(DBHandler):
+    def __init__(self, postgres_config: PostgresDBHandlerConfig) -> None:
+        logger.info("Initializing PostgresDBHandler")
+        self.postgres_config = postgres_config
+        self._connection: psycopg2.extensions.connection | None = None
+        self._cursor: psycopg2.extensions.cursor | None = None
+
+    def _connect(self) -> None:
+        logger.info("Attempting to connect to PostgreSQL")
+        if not self._connection or self._connection.closed:
+            try:
+                self._connection = psycopg2.connect(
+                    host=self.postgres_config.host,
+                    port=self.postgres_config.port,
+                    dbname=self.postgres_config.dbname,
+                    user=self.postgres_config.user,
+                    password=self.postgres_config.password,
+                )
+                self._cursor = self._connection.cursor()
+                logger.info("Successfully connected to PostgreSQL")
+            except Exception as e:
+                msg = "Failed to establish PostgreSQL connection"
+                raise StudentPerformanceError(e, msg) from e
+
+    def close(self) -> None:
+        if self._cursor:
+            self._cursor.close()
+        if self._connection:
+            self._connection.close()
+            logger.info("PostgreSQL connection closed")
+
+    def ping(self) -> None:
+        logger.info("Pinging PostgreSQL")
+        try:
+            self._connect()
+            logger.info("Executing ping query")
+            self._cursor.execute("SELECT 1;")
+            self._cursor.fetchone()
+            logger.info("PostgreSQL connection successful (ping passed).")
+        except Exception as e:
+            msg = "PostgreSQL ping failed"
+            raise StudentPerformanceError(e, msg) from e
+        logger.info("PostgreSQL ping completed")
+
+    def load_from_source(self) -> pd.DataFrame:
+        logger.info(f"Loading data from PostgreSQL table: {self.postgres_config.table_name}")
+        try:
+            self._connect()
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.postgres_config.table_name))
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            df = pd.read_sql_query(query.as_string(self._connection), self._connection)
+            logger.info(f"DataFrame loaded from PostgreSQL table: {self.postgres_config.table_name}")
+            return df
+        except Exception as e:
+            msg = f"Failed to load data from PostgreSQL table: {self.postgres_config.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+
+    def get_table_list(self) -> list[str]:
+        """
+        Get a list of all tables in the PostgreSQL database.
+
+        Returns:
+            list[str]: A list of table names.
+
+        Raises:
+            StudentPerformanceError: If listing tables fails.
+        """
+        logger.info("Retrieving list of tables")
+        try:
+            self._connect()
+            query = sql.SQL("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_type = 'BASE TABLE';
+            """)
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            self._cursor.execute(query)
+            tables = [table[0] for table in self._cursor.fetchall()]
+            logger.info("Successfully retrieved list of tables.")
+            return tables
+        except Exception as e:
+            msg = "Failed to retrieve list of tables"
+            raise StudentPerformanceError(e, msg) from e
+
+    def create_table_from_schema(self) -> None:
+        """
+        Create a PostgreSQL table if it doesn't exist using schema from ConfigBox.
+
+        Args:
+            table_name (str): The name of the table to create.
+            schema (ConfigBox): Parsed schema.yaml with dot-access support.
+
+        Raises:
+            StudentPerformanceError: If table creation fails.
+        """
+        logger.info(f"Creating table from schema: {self.postgres_config.table_name}")
+        try:
+            self._connect()
+
+            table_name = self.postgres_config.table_name
+
+            # Check if table exists
+            query = sql.SQL("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_name = {}
+                );
+            """).format(sql.Literal(table_name))
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            self._cursor.execute(query)
+            table_exists = self._cursor.fetchone()[0]
+
+            if table_exists:
+                logger.info(f"Table '{table_name}' already exists.")
+                return
+
+            # Access columns via dot-notation
+            table_schema = self.postgres_config.table_schema[table_name].columns
+
+            column_definitions = []
+
+            for col_name, col_def in table_schema.items():
+                col_type = col_def.type
+                constraints = col_def.get("constraints", {})
+
+                column_sql = f"{col_name} {col_type}"
+
+                # ENUM-style value check
+                if "allowed_values" in constraints:
+                    allowed = ", ".join("'{}'".format(val.replace("'", "''")) for val in constraints.allowed_values)
+                    column_sql += f" CHECK ({col_name} IN ({allowed}))"
+
+                # Numeric bounds
+                if "min" in constraints and "max" in constraints:
+                    column_sql += f" CHECK ({col_name} BETWEEN {constraints.min} AND {constraints.max})"
+                elif "min" in constraints:
+                    column_sql += f" CHECK ({col_name} >= {constraints.min})"
+                elif "max" in constraints:
+                    column_sql += f" CHECK ({col_name} <= {constraints.max})"
+
+                column_definitions.append(column_sql)
+
+            # Final CREATE query
+            create_query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {} (
+                    {}
+                );
+            """).format(
+                sql.Identifier(table_name),
+                sql.SQL(", ").join(map(sql.SQL, column_definitions))
+            )
+            logger.info(f"Executing query: {create_query.as_string(self._connection)}")
+            self._cursor.execute(create_query)
+            self._connection.commit()
+            logger.info(f"Table '{table_name}' created.")
+
+        except Exception as e:
+            msg = f"Failed to create table: '{table_name}'"
+            raise StudentPerformanceError(e, msg) from e
+        logger.info(f"Finished creating table from schema: {self.postgres_config.table_name}")
+
+    def insert_data_from_csv(self) -> None:
+        """
+        Insert data from the configured CSV file into the PostgreSQL table.
+
+        Raises:
+            StudentPerformanceError: If data insertion fails.
+        """
+        logger.info(f"Inserting data from CSV into table: {self.postgres_config.table_name}")
+        try:
+            self._connect()
+            
+            # Read the CSV file into a Pandas DataFrame
+            csv_filepath = self.postgres_config.input_data_filepath
+            logger.info(f"Reading CSV file: {csv_filepath}")
+            df = pd.read_csv(csv_filepath)
+            
+            # Get the table name
+            table_name = self.postgres_config.table_name
+            
+            # Define the SQL INSERT query
+            columns = ', '.join(df.columns)
+            values = ', '.join(['%s'] * len(df.columns))
+            insert_query = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
+                sql.Identifier(table_name),
+                sql.SQL(columns),
+                sql.SQL(values)
+            )
+            
+            # Execute the INSERT query for each row in the DataFrame
+            logger.info("Inserting data into table")
+            for _, row in df.iterrows():
+                self._cursor.execute(insert_query, row.tolist())
+            
+            # Commit the changes to the database
+            self._connection.commit()
+            
+        except Exception as e:
+            msg = f"Failed to insert data from CSV into table: {self.postgres_config.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+        logger.info(f"Successfully inserted data from CSV into table: {self.postgres_config.table_name}")
+        logger.info(f"Finished inserting data from CSV into table: {self.postgres_config.table_name}")
+
+    def read_data_to_df(self) -> pd.DataFrame:
+        """
+        Reads data from the PostgreSQL table into a Pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A Pandas DataFrame containing the data from the table.
+
+        Raises:
+            StudentPerformanceError: If reading data fails.
+        """
+        logger.info(f"Reading data from PostgreSQL table: {self.postgres_config.table_name}")
+        try:
+            self._connect()
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.postgres_config.table_name))
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            df = pd.read_sql_query(query.as_string(self._connection), self._connection)
+            logger.info(f"Successfully read data from PostgreSQL table: {self.postgres_config.table_name}")
+            logger.info(f"Finished reading data from PostgreSQL table: {self.postgres_config.table_name}")
+            return df
+        except Exception as e:
+            msg = f"Failed to read data from PostgreSQL table: {self.postgres_config.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+
+================================================================================
+# PY FILE: src\student_performance\entity\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\entity\artifact_entity.py
+================================================================================
+
+from box import ConfigBox
+from dataclasses import dataclass
+from pathlib import Path
+
+@dataclass(frozen=True)
+class DataIngestionArtifact:
+    raw_artifact_path: Path
+    ingested_data_filepath: Path
+    dvc_raw_filepath: Path
+
+    def __repr__(self) -> str:
+        raw_artifact_str = self.raw_artifact_path.as_posix() if self.raw_artifact_path else "None"
+        raw_dvc_str = self.dvc_raw_filepath.as_posix() if self.dvc_raw_filepath else "None"
+        ingested_data_str = self.ingested_data_filepath.as_posix() if self.ingested_data_filepath else "None"
+
+        return (
+            "\nData Ingestion Artifact:\n"
+            f"  - Raw Artifact:         '{raw_artifact_str}'\n"
+            f"  - Raw DVC Path:         '{raw_dvc_str}'\n"
+            f"  - Ingested Data Path:   '{ingested_data_str}'\n"
+        )
+
+@dataclass(frozen=True)
+class DataValidationArtifact:
+    validated_filepath: Path
+    validation_status: bool
+
+    def __repr__(self) -> str:
+        validated_str = self.validated_filepath.as_posix() if self.validated_filepath else "None"
+
+        return (
+            "\nData Validation Artifact:\n"
+            f"  - Validated Data Path: '{validated_str}'\n"
+            f"  - Validation Status:   '{self.validation_status}'\n"
+        )
+
+
+@dataclass(frozen=True)
+class DataTransformationArtifact:
+    x_train_filepath: Path
+    y_train_filepath: Path
+    x_val_filepath: Path
+    y_val_filepath: Path
+    x_test_filepath: Path
+    y_test_filepath: Path
+    x_preprocessor_filepath: Path
+    y_preprocessor_filepath: Path
+
+    def __repr__(self) -> str:
+        return (
+            "\nData Transformation Artifact:\n"
+            f"  - X Train Path:         '{self.x_train_filepath.as_posix()}'\n"
+            f"  - Y Train Path:         '{self.y_train_filepath.as_posix()}'\n"
+            f"  - X Val Path:           '{self.x_val_filepath.as_posix()}'\n"
+            f"  - Y Val Path:           '{self.y_val_filepath.as_posix()}'\n"
+            f"  - X Test Path:          '{self.x_test_filepath.as_posix()}'\n"
+            f"  - Y Test Path:          '{self.y_test_filepath.as_posix()}'\n"
+            f"  - X Preprocessor Path:  '{self.x_preprocessor_filepath.as_posix()}'\n"
+            f"  - Y Preprocessor Path:  '{self.y_preprocessor_filepath.as_posix()}'\n"
+        )
+
+================================================================================
+# PY FILE: src\student_performance\entity\config_entity.py
+================================================================================
+
+from box import ConfigBox
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass
+class PostgresDBHandlerConfig:
+    root_dir: Path
+    host: str
+    port: int
+    dbname: str
+    user: str
+    password: str
+    table_name: str
+    input_data_filepath: Path
+    table_schema: ConfigBox
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.input_data_filepath = Path(self.input_data_filepath)
+
+    def __repr__(self) -> str:
+        return (
+            "\nPostgres DB Handler Config:\n"
+            f"  - Root Dir:         '{self.root_dir.as_posix()}'\n"
+            f"  - Host:             {self.host}\n"
+            f"  - Port:             {self.port}\n"
+            f"  - Database Name:    {self.dbname}\n"
+            f"  - User:             {self.user}\n"
+            f"  - Password:         {'*' * 8} (hidden)\n"
+            f"  - Table:            {self.table_name}\n"
+            f"  - Input Filepath:   '{self.input_data_filepath.as_posix()}'\n"
+            f"  - Input Filepath:   {'table_schema'} (hidden)\n"
+        )
+
+
+@dataclass
+class DataIngestionConfig:
+    root_dir: Path
+    raw_data_filepath: Path
+    dvc_raw_filepath: Path
+    ingested_data_filepath: Path
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.raw_data_filepath = Path(self.raw_data_filepath)
+        self.dvc_raw_filepath = Path(self.dvc_raw_filepath)
+        self.ingested_data_filepath = Path(self.ingested_data_filepath)
+
+    def __repr__(self) -> str:
+        return (
+            "\nData Ingestion Config:\n"
+            f"  - Root Dir:           '{self.root_dir.as_posix()}'\n"
+            f"  - Raw Data Path:      '{self.raw_data_filepath.as_posix()}'\n"
+            f"  - DVC Raw Path:       '{self.dvc_raw_filepath.as_posix()}'\n"
+            f"  - Ingested Data Path: '{self.ingested_data_filepath.as_posix()}'\n"
+        )
+
+
+@dataclass
+class DataValidationConfig:
+    root_dir: Path
+    validated_filepath: Path
+    dvc_validated_filepath: Path
+
+    schema: ConfigBox
+    report_template: ConfigBox
+    validation_params: ConfigBox
+
+    missing_report_filepath: Path
+    duplicates_report_filepath: Path
+    drift_report_filepath: Path
+    validation_report_filepath: Path
+    categorical_report_filepath: Path
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.validated_filepath = Path(self.validated_filepath)
+        self.dvc_validated_filepath = Path(self.dvc_validated_filepath)
+
+        self.missing_report_filepath = Path(self.missing_report_filepath)
+        self.duplicates_report_filepath = Path(self.duplicates_report_filepath)
+        self.drift_report_filepath = Path(self.drift_report_filepath)
+        self.validation_report_filepath = Path(self.validation_report_filepath)
+        self.categorical_report_filepath = Path(self.categorical_report_filepath)
+
+    def __repr__(self) -> str:
+        return (
+            "\nData Validation Config:\n"
+            f"  - Root Dir:                '{self.root_dir.as_posix()}'\n"
+            f"  - Validated CSV:           '{self.validated_filepath.as_posix()}'\n"
+            f"  - DVC Validated Path:      '{self.dvc_validated_filepath.as_posix()}'\n"
+            f"  - Missing Report:          '{self.missing_report_filepath.as_posix()}'\n"
+            f"  - Duplicates Report:       '{self.duplicates_report_filepath.as_posix()}'\n"
+            f"  - Drift Report:            '{self.drift_report_filepath.as_posix()}'\n"
+            f"  - Categorical Report:      '{self.categorical_report_filepath.as_posix()}'\n"
+            f"  - Validation Report:       '{self.validation_report_filepath.as_posix()}'\n"
+            f"  - Schema Config:           'schema' (hidden)\n"
+            f"  - Report Template:         'template' (hidden)\n"
+            f"  - Validation Params:       'params' (hidden)\n"
+        )
+
+
+@dataclass
+class DataTransformationConfig:
+    root_dir: Path
+
+    # Target and parameters
+    target_column: str
+    transformation_params: ConfigBox
+
+    # Transformed dataset filepaths
+    x_train_filepath: Path
+    y_train_filepath: Path
+    x_val_filepath: Path
+    y_val_filepath: Path
+    x_test_filepath: Path
+    y_test_filepath: Path
+
+    # DVC-tracked filepaths
+    x_train_dvc_filepath: Path
+    y_train_dvc_filepath: Path
+    x_val_dvc_filepath: Path
+    y_val_dvc_filepath: Path
+    x_test_dvc_filepath: Path
+    y_test_dvc_filepath: Path
+
+    # Preprocessor objects
+    x_preprocessor_filepath: Path
+    y_preprocessor_filepath: Path
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.x_train_filepath = Path(self.x_train_filepath)
+        self.y_train_filepath = Path(self.y_train_filepath)
+        self.x_val_filepath = Path(self.x_val_filepath)
+        self.y_val_filepath = Path(self.y_val_filepath)
+        self.x_test_filepath = Path(self.x_test_filepath)
+        self.y_test_filepath = Path(self.y_test_filepath)
+
+        self.x_train_dvc_filepath = Path(self.x_train_dvc_filepath)
+        self.y_train_dvc_filepath = Path(self.y_train_dvc_filepath)
+        self.x_val_dvc_filepath = Path(self.x_val_dvc_filepath)
+        self.y_val_dvc_filepath = Path(self.y_val_dvc_filepath)
+        self.x_test_dvc_filepath = Path(self.x_test_dvc_filepath)
+        self.y_test_dvc_filepath = Path(self.y_test_dvc_filepath)
+
+        self.x_preprocessor_filepath = Path(self.x_preprocessor_filepath)
+        self.y_preprocessor_filepath = Path(self.y_preprocessor_filepath)
+
+    def __repr__(self) -> str:
+        return (
+            "\nData Transformation Config:\n"
+            f"  - Root Dir:              '{self.root_dir.as_posix()}'\n"
+            f"  - Target Column:         '{self.target_column}'\n"
+            f"  - X Train:               '{self.x_train_filepath.as_posix()}'\n"
+            f"  - Y Train:               '{self.y_train_filepath.as_posix()}'\n"
+            f"  - X Val:                 '{self.x_val_filepath.as_posix()}'\n"
+            f"  - Y Val:                 '{self.y_val_filepath.as_posix()}'\n"
+            f"  - X Test:                '{self.x_test_filepath.as_posix()}'\n"
+            f"  - Y Test:                '{self.y_test_filepath.as_posix()}'\n"
+            f"  - X Preprocessor:        '{self.x_preprocessor_filepath.as_posix()}'\n"
+            f"  - Y Preprocessor:        '{self.y_preprocessor_filepath.as_posix()}'\n"
+            f"  - Transformation Params: 'transformation_params' (hidden)\n"
+        )
+
+================================================================================
+# PY FILE: src\student_performance\exception\__init__.py
+================================================================================
+
+

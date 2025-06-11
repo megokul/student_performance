@@ -18,3 +18,14 @@ data_validation:
   drift_report_filename: drift_report.yaml
   validation_report_filename: validation_report.yaml
   categorical_report_filename: categorical_report.yaml
+
+# Data transformation configuration
+data_transformation:
+  x_train_filename: x_train.npy
+  y_train_filename: y_train.npy
+  x_val_filename: x_val.npy
+  y_val_filename: y_val.npy
+  x_test_filename: x_test.npy
+  y_test_filename: y_test.npy
+  x_preprocessor_filename: x_preprocessor.joblib
+  y_preprocessor_filename: y_preprocessor.joblib

@@ -5,6 +5,7 @@ from src.student_performance.logging import logger
 
 from src.student_performance.components.data_ingestion import DataIngestion
 from src.student_performance.components.data_validation import DataValidation
+from src.student_performance.components.data_transformation import DataTransformation
 
 
 class TrainingPipeline:
@@ -42,6 +43,18 @@ class TrainingPipeline:
             )
             data_validation_artifact = data_validation.run_validation()
             logger.info(f"Data Validation Artifact: {data_validation_artifact}")
+
+            # Step 4: Run data transformation (only if validation passed)
+            if data_validation_artifact.validation_status:
+                data_transformation_config = self.config_manager.get_data_transformation_config()
+                data_transformation = DataTransformation(
+                    config=data_transformation_config,
+                    validation_artifact=data_validation_artifact
+                )
+                data_transformation_artifact = data_transformation.run_transformation()
+                logger.info(f"Data Transformation Artifact: {data_transformation_artifact}")
+            else:
+                logger.warning("Data validation failed. Skipping data transformation step.")
 
             logger.info("========== Training Pipeline Completed ==========")
 

@@ -1,0 +1,78 @@
+[2025-06-08 03:47:48,726] - INFO - training_pipeline - Initializing TrainingPipeline...
+[2025-06-08 03:47:48,737] - INFO - core - YAML successfully loaded from: 'config/config.yaml'
+[2025-06-08 03:47:48,746] - INFO - core - YAML successfully loaded from: 'config/params.yaml'
+[2025-06-08 03:47:48,768] - INFO - core - YAML successfully loaded from: 'config/schema.yaml'
+[2025-06-08 03:47:48,781] - INFO - core - YAML successfully loaded from: 'config/templates.yaml'
+[2025-06-08 03:47:48,782] - INFO - training_pipeline - ========== Training Pipeline Started ==========
+[2025-06-08 03:47:48,782] - INFO - postgres_dbhandler - Initializing PostgresDBHandler
+[2025-06-08 03:47:48,782] - INFO - data_ingestion - ========== Starting Data Ingestion ==========
+[2025-06-08 03:47:48,784] - INFO - data_ingestion - Step 1: Fetching raw data
+[2025-06-08 03:47:48,784] - INFO - postgres_dbhandler - Loading data from PostgreSQL table: student_scores
+[2025-06-08 03:47:48,784] - INFO - postgres_dbhandler - Attempting to connect to PostgreSQL
+[2025-06-08 03:47:49,815] - INFO - postgres_dbhandler - Successfully connected to PostgreSQL
+[2025-06-08 03:47:49,819] - INFO - postgres_dbhandler - Executing query: SELECT * FROM "student_scores"
+[2025-06-08 03:47:50,530] - INFO - postgres_dbhandler - DataFrame loaded from PostgreSQL table: student_scores
+[2025-06-08 03:47:50,531] - INFO - data_ingestion - Fetched 2000 raw rows from data source.
+[2025-06-08 03:47:50,531] - INFO - postgres_dbhandler - PostgreSQL connection closed
+[2025-06-08 03:47:50,531] - INFO - data_ingestion - Step 2: Saving raw data
+[2025-06-08 03:47:50,531] - INFO - core - Created directory for Raw Data: 'artifacts/2025_06_08T02_47_45Z/data_ingestion/raw_data'
+[2025-06-08 03:47:50,539] - INFO - core - Raw Data saved to: 'artifacts/2025_06_08T02_47_45Z/data_ingestion/raw_data/raw.csv'
+[2025-06-08 03:47:50,539] - INFO - data_ingestion - Step 3: Saving raw data to dvc path
+[2025-06-08 03:47:50,539] - INFO - core - Directory already exists for Raw Data: 'data/raw'
+[2025-06-08 03:47:50,543] - INFO - core - Raw Data saved to: 'data/raw/raw.csv'
+[2025-06-08 03:47:50,543] - INFO - data_ingestion - Step 4: Cleaning raw data
+[2025-06-08 03:47:50,546] - INFO - data_ingestion - Raw DataFrame cleaned successfully.
+[2025-06-08 03:47:50,546] - INFO - data_ingestion - Step 5: Saving cleaned (ingested) data
+[2025-06-08 03:47:50,547] - INFO - core - Created directory for Ingested Data: 'artifacts/2025_06_08T02_47_45Z/data_ingestion/ingested_data'
+[2025-06-08 03:47:50,551] - INFO - core - Ingested Data saved to: 'artifacts/2025_06_08T02_47_45Z/data_ingestion/ingested_data/ingested_data.csv'
+[2025-06-08 03:47:50,551] - INFO - data_ingestion - ========== Data Ingestion Completed ==========
+[2025-06-08 03:47:50,551] - INFO - training_pipeline - Data Ingestion Artifact: 
+Data Ingestion Artifact:
+  - Raw Artifact:         'artifacts/2025_06_08T02_47_45Z/data_ingestion/raw_data/raw.csv'
+  - Raw DVC Path:         'data/raw/raw.csv'
+  - Ingested Data Path:   'artifacts/2025_06_08T02_47_45Z/data_ingestion/ingested_data/ingested_data.csv'
+
+[2025-06-08 03:47:50,552] - INFO - data_validation - Initializing DataValidation component.
+[2025-06-08 03:47:50,563] - INFO - core - CSV file read successfully from: 'artifacts/2025_06_08T02_47_45Z/data_ingestion/ingested_data/ingested_data.csv'
+[2025-06-08 03:47:50,573] - INFO - core - CSV file read successfully from: 'data/validated/validated_data.csv'
+[2025-06-08 03:47:50,573] - INFO - data_validation - ========== Starting Data Validation ==========
+[2025-06-08 03:47:50,573] - INFO - data_validation - Step 1: Performing schema check
+[2025-06-08 03:47:50,574] - INFO - data_validation - Performing schema hash check.
+[2025-06-08 03:47:50,574] - INFO - data_validation - Schema hash check passed.
+[2025-06-08 03:47:50,575] - INFO - data_validation - Step 2: Checking missing values
+[2025-06-08 03:47:50,575] - INFO - data_validation - Checking for missing values.
+[2025-06-08 03:47:50,577] - INFO - core - Created directory for Missing Value Report: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports'
+[2025-06-08 03:47:50,579] - INFO - core - Missing Value Report saved to: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports/missing_values_report.yaml'
+[2025-06-08 03:47:50,580] - INFO - data_validation - Missing value check passed.
+[2025-06-08 03:47:50,580] - INFO - data_validation - Step 3: Checking for duplicates
+[2025-06-08 03:47:50,580] - INFO - data_validation - Checking for duplicate rows.
+[2025-06-08 03:47:50,582] - INFO - core - Directory already exists for Duplicates Report: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports'
+[2025-06-08 03:47:50,583] - INFO - core - Duplicates Report saved to: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports/duplicates_report.yaml'
+[2025-06-08 03:47:50,583] - INFO - data_validation - Duplicate check passed.
+[2025-06-08 03:47:50,583] - INFO - data_validation - Step 4: Checking categorical column values
+[2025-06-08 03:47:50,583] - INFO - data_validation - Checking categorical values against schema constraints.
+[2025-06-08 03:47:50,586] - INFO - core - Directory already exists for Categorical Values Report: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports'
+[2025-06-08 03:47:50,587] - INFO - core - Categorical Values Report saved to: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports/categorical_report.yaml'
+[2025-06-08 03:47:50,587] - INFO - data_validation - Categorical values check passed.
+[2025-06-08 03:47:50,588] - INFO - data_validation - Step 5: Performing drift check
+[2025-06-08 03:47:50,588] - INFO - data_validation - Performing data drift check.
+[2025-06-08 03:47:50,639] - INFO - core - Directory already exists for Drift Report: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports'
+[2025-06-08 03:47:50,644] - INFO - core - Drift Report saved to: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports/drift_report.yaml'
+[2025-06-08 03:47:50,644] - INFO - data_validation - Drift check passed.
+[2025-06-08 03:47:50,644] - INFO - data_validation - Step 6: Generating validation report
+[2025-06-08 03:47:50,644] - INFO - data_validation - Generating final validation report.
+[2025-06-08 03:47:50,644] - INFO - core - Directory already exists for Validation Report: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports'
+[2025-06-08 03:47:50,647] - INFO - core - Validation Report saved to: 'artifacts/2025_06_08T02_47_45Z/data_validation/reports/validation_report.yaml'
+[2025-06-08 03:47:50,648] - INFO - data_validation - Step 7: Saving validated data if validation passes
+[2025-06-08 03:47:50,648] - INFO - core - Created directory for Validated Data: 'artifacts/2025_06_08T02_47_45Z/data_validation/validated'
+[2025-06-08 03:47:50,652] - INFO - core - Validated Data saved to: 'artifacts/2025_06_08T02_47_45Z/data_validation/validated/validated_data.csv'
+[2025-06-08 03:47:50,652] - INFO - core - Directory already exists for Validated Data: 'data/validated'
+[2025-06-08 03:47:50,657] - INFO - core - Validated Data saved to: 'data/validated/validated_data.csv'
+[2025-06-08 03:47:50,657] - INFO - data_validation - Validated data saved successfully.
+[2025-06-08 03:47:50,657] - INFO - data_validation - ========== Data Validation Completed ==========
+[2025-06-08 03:47:50,657] - INFO - training_pipeline - Data Validation Artifact: 
+Data Validation Artifact:
+  - Validated Data Path: 'artifacts/2025_06_08T02_47_45Z/data_validation/validated/validated_data.csv'
+  - Validation Status:   'True'
+
+[2025-06-08 03:47:50,657] - INFO - training_pipeline - ========== Training Pipeline Completed ==========

@@ -1,7 +1,6 @@
 import sys
 from types import TracebackType
-
-from src.student_performance.logging import logger
+from logging import Logger
 
 
 class StudentPerformanceError(Exception):
@@ -9,24 +8,30 @@ class StudentPerformanceError(Exception):
     Custom exception for the Student Performance project.
 
     Automatically captures:
-    - Original exception message or optional custom message
-    - Filename and line number from traceback
-    - Logs the formatted error using a centralized logger
+    - Original exception message
+    - Filename and line number from the traceback
+    - Logs the formatted error using an injected logger
     """
 
-    def __init__(self, error: Exception, message: str | None = None) -> None:
-        final_message: str = message or str(error)
-        super().__init__(final_message)
-        self.message: str = final_message
+    def __init__(self, error: Exception, logger: Logger) -> None:
+        # Set the core message
+        super().__init__(str(error))
+        self.message: str = str(error)
+        self.logger: Logger = logger
 
-        # Extract traceback information
+        # Extract traceback info from current exception context
         _, _, tb = sys.exc_info()
         tb: TracebackType | None
-        self.line: int | None = tb.tb_lineno if tb else None
-        self.file: str = tb.tb_frame.f_code.co_filename if tb else "Unknown"
 
-        # Log the error using centralized logger
-        logger.error(str(self), exc_info=sys.exc_info())
+        # Safely capture line number and file
+        self.line: int | None = tb.tb_lineno if tb and tb.tb_lineno else None
+        self.file: str = tb.tb_frame.f_code.co_filename if tb and tb.tb_frame else "Unknown"
+
+        # Log the error using injected logger with traceback
+        try:
+            self.logger.error(str(self), exc_info=True)
+        except Exception as log_error:
+            print(f"Logging failed inside StudentPerformanceError: {log_error}")
 
     def __str__(self) -> str:
         return (

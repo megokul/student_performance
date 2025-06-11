@@ -14,6 +14,7 @@ class DataIngestion:
             self.ingestion_config = ingestion_config
             self.db_handler = db_handler
         except Exception as e:
+            logger.exception("Failed to initialize DataIngestion class.")
             raise StudentPerformanceError(e, logger) from e
 
     def __fetch_raw_data(self) -> pd.DataFrame:
@@ -23,6 +24,7 @@ class DataIngestion:
                 logger.info(f"Fetched {len(df)} raw rows from data source.")
                 return df
         except Exception as e:
+            logger.exception("Failed to fetch raw data from source.")
             raise StudentPerformanceError(e, logger) from e
 
     def __clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -32,6 +34,7 @@ class DataIngestion:
             logger.info("Raw DataFrame cleaned successfully.")
             return df_cleaned
         except Exception as e:
+            logger.exception("Failed to clean raw DataFrame.")
             raise StudentPerformanceError(e, logger) from e
 
     def run_ingestion(self) -> DataIngestionArtifact:
@@ -70,6 +73,7 @@ class DataIngestion:
                 self.ingestion_config.ingested_data_filepath,
                 label="Ingested Data",
             )
+
             logger.info("========== Data Ingestion Completed ==========")
 
             return DataIngestionArtifact(
@@ -78,5 +82,5 @@ class DataIngestion:
                 dvc_raw_filepath=self.ingestion_config.dvc_raw_filepath,
             )
         except Exception as e:
-            logger.error("Data ingestion failed.")
+            logger.exception("Data ingestion pipeline execution failed.")
             raise StudentPerformanceError(e, logger) from e
