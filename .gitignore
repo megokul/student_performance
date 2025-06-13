@@ -2,3 +2,4 @@ venv
 project_template.py
 project_dump.py
 .env
+/data
