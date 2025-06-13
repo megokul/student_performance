@@ -7,6 +7,7 @@ import yaml
 import json
 import numpy as np
 import pandas as pd
+import joblib
 
 from src.student_performance.logging import logger
 from src.student_performance.exception.exception import StudentPerformanceError

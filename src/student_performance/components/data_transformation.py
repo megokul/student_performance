@@ -1,4 +1,3 @@
-# FILE: src/student_performance/components/data_transformation.py
 
 from pathlib import Path
 from typing import Tuple
@@ -19,9 +18,9 @@ from src.student_performance.constants.constants import (
 
 
 class DataTransformation:
-    def __init__(self, config: DataTransformationConfig, validation_artifact: DataValidationArtifact):
+    def __init__(self, transformation_config: DataTransformationConfig, validation_artifact: DataValidationArtifact):
         try:
-            self.config = config
+            self.transformation_config = transformation_config
             self.validation_artifact = validation_artifact
             self.df = read_csv(validation_artifact.validated_filepath)
         except Exception as e:
@@ -30,15 +29,15 @@ class DataTransformation:
     def _split_features_and_target(self) -> Tuple[pd.DataFrame, pd.Series]:
         try:
             df = self.df.copy()
-            X = df.drop(columns=[self.config.target_column])
-            y = df[self.config.target_column]
+            X = df.drop(columns=self.transformation_config.target_column)
+            y = df[self.transformation_config.target_column]
             return X, y
         except Exception as e:
             raise StudentPerformanceError(e, logger) from e
 
     def _split_data(self, X: pd.DataFrame, y: pd.Series) -> Tuple:
         try:
-            split_params = self.config.transformation_params.data_split
+            split_params = self.transformation_config.transformation_params.data_split
             stratify = y if split_params.stratify else None
 
             X_train, X_temp, y_train, y_temp = train_test_split(
@@ -62,12 +61,12 @@ class DataTransformation:
 
     def _save_datasets(self, X_train, X_val, X_test, y_train, y_val, y_test):
         try:
-            save_array(X_train, self.config.x_train_filepath, self.config.x_train_dvc_filepath, label=X_TRAIN_LABEL)
-            save_array(y_train, self.config.y_train_filepath, self.config.y_train_dvc_filepath, label=Y_TRAIN_LABEL)
-            save_array(X_val, self.config.x_val_filepath, self.config.x_val_dvc_filepath, label=X_VAL_LABEL)
-            save_array(y_val, self.config.y_val_filepath, self.config.y_val_dvc_filepath, label=Y_VAL_LABEL)
-            save_array(X_test, self.config.x_test_filepath, self.config.x_test_dvc_filepath, label=X_TEST_LABEL)
-            save_array(y_test, self.config.y_test_filepath, self.config.y_test_dvc_filepath, label=Y_TEST_LABEL)
+            save_array(X_train, self.transformation_config.x_train_filepath, self.transformation_config.x_train_dvc_filepath, label=X_TRAIN_LABEL)
+            save_array(y_train, self.transformation_config.y_train_filepath, self.transformation_config.y_train_dvc_filepath, label=Y_TRAIN_LABEL)
+            save_array(X_val, self.transformation_config.x_val_filepath, self.transformation_config.x_val_dvc_filepath, label=X_VAL_LABEL)
+            save_array(y_val, self.transformation_config.y_val_filepath, self.transformation_config.y_val_dvc_filepath, label=Y_VAL_LABEL)
+            save_array(X_test, self.transformation_config.x_test_filepath, self.transformation_config.x_test_dvc_filepath, label=X_TEST_LABEL)
+            save_array(y_test, self.transformation_config.y_test_filepath, self.transformation_config.y_test_dvc_filepath, label=Y_TEST_LABEL)
         except Exception as e:
             raise StudentPerformanceError(e, logger) from e
 
@@ -83,8 +82,8 @@ class DataTransformation:
 
             # Step 3: Build preprocessor pipelines for X and Y
             builder = PreprocessorBuilder(
-                steps=self.config.transformation_params.steps,
-                methods=self.config.transformation_params.methods,
+                steps=self.transformation_config.transformation_params.steps,
+                methods=self.transformation_config.transformation_params.methods,
             )
             x_processor, y_processor = builder.build()
 
@@ -98,8 +97,8 @@ class DataTransformation:
             y_test = y_processor.transform(y_test)
 
             # Step 5: Save X and Y processors
-            save_object(x_processor, self.config.x_preprocessor_filepath, label="X Preprocessor Pipeline")
-            save_object(y_processor, self.config.y_preprocessor_filepath, label="Y Preprocessor Pipeline")
+            save_object(x_processor, self.transformation_config.x_preprocessor_filepath, label="X Preprocessor Pipeline")
+            save_object(y_processor, self.transformation_config.y_preprocessor_filepath, label="Y Preprocessor Pipeline")
 
             # Step 6: Save transformed datasets
             self._save_datasets(X_train, X_val, X_test, y_train, y_val, y_test)
@@ -107,14 +106,14 @@ class DataTransformation:
             logger.info("========== Data Transformation Completed ==========")
 
             return DataTransformationArtifact(
-                x_train_filepath=self.config.x_train_filepath,
-                y_train_filepath=self.config.y_train_filepath,
-                x_val_filepath=self.config.x_val_filepath,
-                y_val_filepath=self.config.y_val_filepath,
-                x_test_filepath=self.config.x_test_filepath,
-                y_test_filepath=self.config.y_test_filepath,
-                x_preprocessor_filepath=self.config.x_preprocessor_filepath,
-                y_preprocessor_filepath=self.config.y_preprocessor_filepath,
+                x_train_filepath=self.transformation_config.x_train_filepath,
+                y_train_filepath=self.transformation_config.y_train_filepath,
+                x_val_filepath=self.transformation_config.x_val_filepath,
+                y_val_filepath=self.transformation_config.y_val_filepath,
+                x_test_filepath=self.transformation_config.x_test_filepath,
+                y_test_filepath=self.transformation_config.y_test_filepath,
+                x_preprocessor_filepath=self.transformation_config.x_preprocessor_filepath,
+                y_preprocessor_filepath=self.transformation_config.y_preprocessor_filepath,
             )
 
         except Exception as e:

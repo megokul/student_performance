@@ -9,7 +9,6 @@ validation_params:
     enabled: true
     method: hash
 
-
 transformation_params:
   data_split:
     train_size: 0.6
@@ -20,32 +19,31 @@ transformation_params:
 
   steps:
     x:
-      - imputation
       - encoding
       - standardization
     y:
-      - compute_target
+      - column_math
       - standardization
 
   methods:
     x:
-      imputation:
-        method: knn
-        missing_values: null
-        n_neighbors: 3
-        weights: uniform
-
       encoding:
         method: one_hot
         handle_unknown: ignore
+        columns:
+          - gender
+          - race_ethnicity
+          - parental_level_of_education
+          - lunch
+          - test_preparation_course
 
       standardization:
         method: standard_scaler
-        with_mean: true
+        with_mean: false
         with_std: true
 
     y:
-      compute_target:
+      column_math:
         method: mean_of_columns
         output_column: mean_score
         input_column:
@@ -57,4 +55,3 @@ transformation_params:
         method: standard_scaler
         with_mean: true
         with_std: true
-

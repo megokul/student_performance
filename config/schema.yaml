@@ -100,3 +100,8 @@ validation_schema:
       - none
       - completed
 
+target_column:
+  - math_score
+  - reading_score
+  - writing_score
+

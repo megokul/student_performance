@@ -6,7 +6,7 @@
 📄 Dockerfile
 📄 app.py
 📁 artifacts/
-    📁 2025_06_08T02_47_45Z/
+    📁 2025_06_13T00_11_29Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -21,7 +21,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_08T02_58_11Z/
+    📁 2025_06_13T15_34_59Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -36,7 +36,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_20_11Z/
+    📁 2025_06_13T15_42_39Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -51,7 +51,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_21_21Z/
+    📁 2025_06_13T15_48_16Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -66,7 +66,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_24_09Z/
+    📁 2025_06_13T15_49_44Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -81,7 +81,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_24_38Z/
+    📁 2025_06_13T15_50_23Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -96,12 +96,77 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_26_14Z/
+    📁 2025_06_13T15_52_14Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
             📁 raw_data/
                 📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_54_26Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_55_30Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_56_13Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_56_30Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+            📄 x_preprocessor.joblib
+            📄 y_preprocessor.joblib
         📁 data_validation/
             📁 reports/
                 📄 categorical_report.yaml
@@ -123,34 +188,35 @@
         📄 validated_data.csv
 📄 debug.py
 📁 logs/
-    📁 2025_06_08T02_47_45Z/
-        📄 2025_06_08T02_47_45Z.log
-    📁 2025_06_08T02_58_11Z/
-        📄 2025_06_08T02_58_11Z.log
-    📁 2025_06_11T14_09_30Z/
-        📄 2025_06_11T14_09_30Z.log
-    📁 2025_06_11T14_11_03Z/
-        📄 2025_06_11T14_11_03Z.log
-    📁 2025_06_11T14_20_11Z/
-        📄 2025_06_11T14_20_11Z.log
-    📁 2025_06_11T14_21_21Z/
-        📄 2025_06_11T14_21_21Z.log
-    📁 2025_06_11T14_24_09Z/
-        📄 2025_06_11T14_24_09Z.log
-    📁 2025_06_11T14_24_38Z/
-        📄 2025_06_11T14_24_38Z.log
-    📁 2025_06_11T14_26_14Z/
-        📄 2025_06_11T14_26_14Z.log
-    📁 2025_06_11T15_45_36Z/
-        📄 2025_06_11T15_45_36Z.log
-    📁 2025_06_11T16_21_13Z/
-        📄 2025_06_11T16_21_13Z.log
+    📁 2025_06_13T00_11_29Z/
+        📄 2025_06_13T00_11_29Z.log
+    📁 2025_06_13T15_34_59Z/
+        📄 2025_06_13T15_34_59Z.log
+    📁 2025_06_13T15_42_39Z/
+        📄 2025_06_13T15_42_39Z.log
+    📁 2025_06_13T15_48_16Z/
+        📄 2025_06_13T15_48_16Z.log
+    📁 2025_06_13T15_49_44Z/
+        📄 2025_06_13T15_49_44Z.log
+    📁 2025_06_13T15_50_23Z/
+        📄 2025_06_13T15_50_23Z.log
+    📁 2025_06_13T15_52_14Z/
+        📄 2025_06_13T15_52_14Z.log
+    📁 2025_06_13T15_54_26Z/
+        📄 2025_06_13T15_54_26Z.log
+    📁 2025_06_13T15_55_30Z/
+        📄 2025_06_13T15_55_30Z.log
+    📁 2025_06_13T15_56_13Z/
+        📄 2025_06_13T15_56_13Z.log
+    📁 2025_06_13T15_56_30Z/
+        📄 2025_06_13T15_56_30Z.log
 📄 main.py
 📁 notebook/
     📄 research.ipynb
 📄 project_code_dump_index.txt
 📄 project_code_dump_part1.txt
 📄 project_code_dump_part2.txt
+📄 project_code_dump_part3.txt
 📄 project_dump.py
 📄 project_template.py
 📄 requirements.txt
@@ -388,7 +454,7 @@ class TrainingPipeline:
             if data_validation_artifact.validation_status:
                 data_transformation_config = self.config_manager.get_data_transformation_config()
                 data_transformation = DataTransformation(
-                    config=data_transformation_config,
+                    transformation_config=data_transformation_config,
                     validation_artifact=data_validation_artifact
                 )
                 data_transformation_artifact = data_transformation.run_transformation()
@@ -421,6 +487,7 @@ import yaml
 import json
 import numpy as np
 import pandas as pd
+import joblib
 
 from src.student_performance.logging import logger
 from src.student_performance.exception.exception import StudentPerformanceError
@@ -685,7 +752,6 @@ validation_params:
     enabled: true
     method: hash
 
-
 transformation_params:
   data_split:
     train_size: 0.6
@@ -696,32 +762,25 @@ transformation_params:
 
   steps:
     x:
-      - imputation
       - encoding
       - standardization
     y:
-      - compute_target
+      - column_math
       - standardization
 
   methods:
     x:
-      imputation:
-        method: knn
-        missing_values: null
-        n_neighbors: 3
-        weights: uniform
-
       encoding:
         method: one_hot
         handle_unknown: ignore
 
       standardization:
         method: standard_scaler
-        with_mean: true
+        with_mean: false
         with_std: true
 
     y:
-      compute_target:
+      column_math:
         method: mean_of_columns
         output_column: mean_score
         input_column:
@@ -839,6 +898,11 @@ validation_schema:
     test_preparation_course:
       - none
       - completed
+
+target_column:
+  - math_score
+  - reading_score
+  - writing_score
 
 ================================================================================
 # YAML FILE: config\templates.yaml

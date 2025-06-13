@@ -17,6 +17,11 @@ from src.student_performance.constants.constants import (
     VALID_ROOT,
     VALID_VALIDATED_SUBDIR,
     VALID_REPORTS_SUBDIR,
+    TRANSFORM_ROOT,
+    TRANSFORM_TRAIN_SUBDIR,
+    TRANSFORM_TEST_SUBDIR,
+    TRANSFORM_VAL_SUBDIR,
+    TRANSFORM_PROCESSOR_SUBDIR,
 )
 from pathlib import Path
 import os
@@ -131,20 +136,21 @@ class ConfigurationManager:
     def get_data_transformation_config(self) -> DataTransformationConfig:
         transformation_config = self.config.data_transformation
         transformation_params = self.params.transformation_params
-        output_column = transformation_params.methods.y.compute_target.output_column
+        output_column = self.schema.target_column
 
-        root_dir = self.artifacts_root / "data_transformation"
+        root_dir = self.artifacts_root / TRANSFORM_ROOT
 
         # Local paths
-        x_train = root_dir / transformation_config.x_train_filename
-        y_train = root_dir / transformation_config.y_train_filename
-        x_val = root_dir / transformation_config.x_val_filename
-        y_val = root_dir / transformation_config.y_val_filename
-        x_test = root_dir / transformation_config.x_test_filename
-        y_test = root_dir / transformation_config.y_test_filename
+        x_train = root_dir / TRANSFORM_TRAIN_SUBDIR / transformation_config.x_train_filename
+        y_train = root_dir / TRANSFORM_TRAIN_SUBDIR / transformation_config.y_train_filename
+        x_val = root_dir / TRANSFORM_VAL_SUBDIR / transformation_config.x_val_filename
+        y_val = root_dir / TRANSFORM_VAL_SUBDIR / transformation_config.y_val_filename
+        x_test = root_dir / TRANSFORM_TEST_SUBDIR / transformation_config.x_test_filename
+        y_test = root_dir / TRANSFORM_TEST_SUBDIR / transformation_config.y_test_filename
 
         # DVC-tracked paths
         dvc_root = Path(DVC_ROOT) / DVC_TRANSFORMED_SUBDIR
+
         x_train_dvc = dvc_root / transformation_config.x_train_filename
         y_train_dvc = dvc_root / transformation_config.y_train_filename
         x_val_dvc = dvc_root / transformation_config.x_val_filename
@@ -153,8 +159,8 @@ class ConfigurationManager:
         y_test_dvc = dvc_root / transformation_config.y_test_filename
 
         # Preprocessor objects
-        x_processor_path = root_dir / transformation_config.x_preprocessor_filename
-        y_processor_path = root_dir / transformation_config.y_preprocessor_filename
+        x_processor_path = root_dir / TRANSFORM_PROCESSOR_SUBDIR / transformation_config.x_preprocessor_filename
+        y_processor_path = root_dir / TRANSFORM_PROCESSOR_SUBDIR / transformation_config.y_preprocessor_filename
 
         return DataTransformationConfig(
             root_dir=root_dir,

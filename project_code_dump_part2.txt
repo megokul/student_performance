@@ -6,7 +6,7 @@
 📄 Dockerfile
 📄 app.py
 📁 artifacts/
-    📁 2025_06_08T02_47_45Z/
+    📁 2025_06_13T00_11_29Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -21,7 +21,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_08T02_58_11Z/
+    📁 2025_06_13T15_34_59Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -36,7 +36,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_20_11Z/
+    📁 2025_06_13T15_42_39Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -51,7 +51,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_21_21Z/
+    📁 2025_06_13T15_48_16Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -66,7 +66,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_24_09Z/
+    📁 2025_06_13T15_49_44Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -81,7 +81,7 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_24_38Z/
+    📁 2025_06_13T15_50_23Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
@@ -96,12 +96,77 @@
                 📄 validation_report.yaml
             📁 validated/
                 📄 validated_data.csv
-    📁 2025_06_11T14_26_14Z/
+    📁 2025_06_13T15_52_14Z/
         📁 data_ingestion/
             📁 ingested_data/
                 📄 ingested_data.csv
             📁 raw_data/
                 📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_54_26Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_55_30Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_56_13Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T15_56_30Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+            📄 x_preprocessor.joblib
+            📄 y_preprocessor.joblib
         📁 data_validation/
             📁 reports/
                 📄 categorical_report.yaml
@@ -123,34 +188,35 @@
         📄 validated_data.csv
 📄 debug.py
 📁 logs/
-    📁 2025_06_08T02_47_45Z/
-        📄 2025_06_08T02_47_45Z.log
-    📁 2025_06_08T02_58_11Z/
-        📄 2025_06_08T02_58_11Z.log
-    📁 2025_06_11T14_09_30Z/
-        📄 2025_06_11T14_09_30Z.log
-    📁 2025_06_11T14_11_03Z/
-        📄 2025_06_11T14_11_03Z.log
-    📁 2025_06_11T14_20_11Z/
-        📄 2025_06_11T14_20_11Z.log
-    📁 2025_06_11T14_21_21Z/
-        📄 2025_06_11T14_21_21Z.log
-    📁 2025_06_11T14_24_09Z/
-        📄 2025_06_11T14_24_09Z.log
-    📁 2025_06_11T14_24_38Z/
-        📄 2025_06_11T14_24_38Z.log
-    📁 2025_06_11T14_26_14Z/
-        📄 2025_06_11T14_26_14Z.log
-    📁 2025_06_11T15_45_36Z/
-        📄 2025_06_11T15_45_36Z.log
-    📁 2025_06_11T16_21_13Z/
-        📄 2025_06_11T16_21_13Z.log
+    📁 2025_06_13T00_11_29Z/
+        📄 2025_06_13T00_11_29Z.log
+    📁 2025_06_13T15_34_59Z/
+        📄 2025_06_13T15_34_59Z.log
+    📁 2025_06_13T15_42_39Z/
+        📄 2025_06_13T15_42_39Z.log
+    📁 2025_06_13T15_48_16Z/
+        📄 2025_06_13T15_48_16Z.log
+    📁 2025_06_13T15_49_44Z/
+        📄 2025_06_13T15_49_44Z.log
+    📁 2025_06_13T15_50_23Z/
+        📄 2025_06_13T15_50_23Z.log
+    📁 2025_06_13T15_52_14Z/
+        📄 2025_06_13T15_52_14Z.log
+    📁 2025_06_13T15_54_26Z/
+        📄 2025_06_13T15_54_26Z.log
+    📁 2025_06_13T15_55_30Z/
+        📄 2025_06_13T15_55_30Z.log
+    📁 2025_06_13T15_56_13Z/
+        📄 2025_06_13T15_56_13Z.log
+    📁 2025_06_13T15_56_30Z/
+        📄 2025_06_13T15_56_30Z.log
 📄 main.py
 📁 notebook/
     📄 research.ipynb
 📄 project_code_dump_index.txt
 📄 project_code_dump_part1.txt
 📄 project_code_dump_part2.txt
+📄 project_code_dump_part3.txt
 📄 project_dump.py
 📄 project_template.py
 📄 requirements.txt
@@ -252,7 +318,7 @@ Y_TEST_LABEL = "y_test"
 # PY FILE: src\student_performance\data_processors\column_math_factory.py
 ================================================================================
 
-from typing import Literal, Self
+from typing import Literal
 import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -261,47 +327,32 @@ from ensure import ensure_annotations
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
 
-# Define allowed operations
+
 ColumnMathOperation = Literal[
     "add", "subtract", "multiply", "divide",
-    "mean", "sqrt", "square", "power"
+    "mean_of_columns", "sqrt", "square", "power",
 ]
 
 
-class ColumnMathTransformer(BaseEstimator, TransformerMixin):
+class ColumnMathFactory(BaseEstimator, TransformerMixin):
     """
-    Transformer that performs mathematical operations on specified columns.
-
-    Supported operations:
-        - add: sum of multiple columns
-        - subtract: subtract columns sequentially (col1 - col2 - col3 ...)
-        - multiply: product of multiple columns
-        - divide: divide columns sequentially (col1 / col2 / col3 ...)
-        - mean: average of specified columns
-        - sqrt: element-wise square root of first column
-        - square: element-wise square of first column
-        - power: first column raised to power of second
-
-    Raises:
-        StudentPerformanceError: For unsupported operations or missing params
+    Transformer to apply mathematical operations to specified columns
+    and create a new output column.
     """
 
-    @ensure_annotations
     def __init__(
         self,
         columns: list[str],
         operation: ColumnMathOperation,
-        output_column: str
+        output_column: str,
     ) -> None:
         self.columns = columns
         self.operation = operation.lower()
         self.output_column = output_column
 
-    @ensure_annotations
-    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> Self:
+    def fit(self, X: pd.DataFrame, y: pd.Series = None) -> "ColumnMathFactory":
         return self
 
-    @ensure_annotations
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         try:
             df = X.copy()
@@ -310,7 +361,7 @@ class ColumnMathTransformer(BaseEstimator, TransformerMixin):
                 df[self.output_column] = df[self.columns].sum(axis=1)
 
             elif self.operation == "subtract":
-                df[self.output_column] = df[self.columns].iloc[:, 0]
+                df[self.output_column] = df[self.columns[0]]
                 for col in self.columns[1:]:
                     df[self.output_column] -= df[col]
 
@@ -318,27 +369,12 @@ class ColumnMathTransformer(BaseEstimator, TransformerMixin):
                 df[self.output_column] = df[self.columns].prod(axis=1)
 
             elif self.operation == "divide":
-                df[self.output_column] = df[self.columns].iloc[:, 0]
+                df[self.output_column] = df[self.columns[0]]
                 for col in self.columns[1:]:
                     df[self.output_column] /= df[col]
 
-            elif self.operation == "mean":
+            elif self.operation == "mean_of_columns":
                 df[self.output_column] = df[self.columns].mean(axis=1)
-
-            elif self.operation == "sqrt":
-                if len(self.columns) != 1:
-                    raise ValueError("sqrt operation requires exactly 1 column.")
-                df[self.output_column] = np.sqrt(df[self.columns[0]])
-
-            elif self.operation == "square":
-                if len(self.columns) != 1:
-                    raise ValueError("square operation requires exactly 1 column.")
-                df[self.output_column] = df[self.columns[0]] ** 2
-
-            elif self.operation == "power":
-                if len(self.columns) != 2:
-                    raise ValueError("power operation requires exactly 2 columns.")
-                df[self.output_column] = df[self.columns[0]] ** df[self.columns[1]]
 
             else:
                 raise ValueError(f"Unsupported operation: {self.operation}")
@@ -347,8 +383,9 @@ class ColumnMathTransformer(BaseEstimator, TransformerMixin):
                 "Applied '%s' operation on columns: %s → '%s'",
                 self.operation,
                 self.columns,
-                self.output_column,
+                self.output_column
             )
+
             return df
 
         except Exception as e:
@@ -358,10 +395,7 @@ class ColumnMathTransformer(BaseEstimator, TransformerMixin):
 # PY FILE: src\student_performance\data_processors\encoder_factory.py
 ================================================================================
 
-"""Factory for building encoding pipelines."""
-
 from typing import Optional
-
 from ensure import ensure_annotations
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
@@ -373,11 +407,10 @@ from src.student_performance.logging import logger
 class EncoderFactory:
     """
     Factory to build encoding pipelines for categorical features.
-    Supports: onehot, ordinal.
-    Easily extendable with new encoders.
     """
+
     _SUPPORTED_METHODS = {
-        "onehot": OneHotEncoder,
+        "one_hot": OneHotEncoder,
         "ordinal": OrdinalEncoder,
     }
 
@@ -388,41 +421,29 @@ class EncoderFactory:
         params: Optional[dict] = None,
         is_target: bool = False,
     ) -> Pipeline:
-        """
-        Returns a sklearn Pipeline with a single encoder step.
-
-        Args:
-            method: Encoding method name.
-            params: Parameters for the encoder constructor.
-            is_target: Whether this encoder is for the target variable.
-                       Not used by default but available for customization.
-
-        Returns:
-            Pipeline: A pipeline containing one ('encoder', encoder_instance) step.
-        """
         try:
             if method not in EncoderFactory._SUPPORTED_METHODS:
                 raise ValueError(f"Unsupported encoding method: {method}")
 
             encoder_class = EncoderFactory._SUPPORTED_METHODS[method]
             encoder = encoder_class(**(params or {}))
-
             return Pipeline(steps=[("encoder", encoder)])
 
-        except Exception as exc:
-            raise StudentPerformanceError(exc, logger) from exc
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
 
 ================================================================================
 # PY FILE: src\student_performance\data_processors\imputer_factory.py
 ================================================================================
 
-"""Factory for building encoding pipelines."""
-
 from typing import Optional
-
 from ensure import ensure_annotations
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from sklearn.impute import KNNImputer, SimpleImputer
+# explicitly require this experimental feature
+from sklearn.experimental import enable_iterative_imputer  # noqa
+# now you can import normally from impute
+from sklearn.impute import IterativeImputer
 
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
@@ -431,9 +452,8 @@ from src.student_performance.logging import logger
 class ImputerFactory:
     """
     Factory to build imputation pipelines for numerical data.
-    Supports: knn, simple, iterative, and custom methods.
-    Easily extendable with new methods.
     """
+
     _SUPPORTED_METHODS = {
         "knn": KNNImputer,
         "simple": SimpleImputer,
@@ -445,26 +465,12 @@ class ImputerFactory:
     def get_imputer_pipeline(
         method: str,
         params: Optional[dict] = None,
-        is_target: bool = False,
+        is_target: bool = False
     ) -> Pipeline:
-        """
-        Returns a sklearn Pipeline with a single imputer step.
-
-        Args:
-            method: Imputation method name.
-            params: Parameters for the imputer constructor.
-            is_target: Whether this imputer is for the target variable.
-                       Not used by default but available for customization.
-
-        Returns:
-            Pipeline: A pipeline containing one ('imputer', imputer_instance) step.
-        """
         try:
             if method == "custom":
                 if not params or "custom_callable" not in params:
-                    raise ValueError(
-                        "Custom imputer requires a 'custom_callable' in params."
-                    )
+                    raise ValueError("Custom imputer requires a 'custom_callable' in params.")
                 imputer = params["custom_callable"]()
             else:
                 ImputerClass = ImputerFactory._SUPPORTED_METHODS.get(method)
@@ -474,110 +480,128 @@ class ImputerFactory:
 
             return Pipeline(steps=[("imputer", imputer)])
 
-        except Exception as exc:
-            raise StudentPerformanceError(exc, logger) from exc
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
 
 ================================================================================
 # PY FILE: src\student_performance\data_processors\preprocessor_builder.py
 ================================================================================
 
-# FILE: src/student_performance/data_processors/preprocessor_builder.py
-
-from typing import Tuple
-from ensure import ensure_annotations
+from typing import Optional, Dict, Tuple
 from sklearn.pipeline import Pipeline
-from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+from box import ConfigBox
 
-from src.student_performance.data_processors.imputer_factory import (
-    ImputerFactory,
-)
-from src.student_performance.data_processors.scaler_factory import (
-    ScalerFactory,
-)
-from src.student_performance.data_processors.encoder_factory import (
-    EncoderFactory,
-)
-from student_performance.data_processors.column_math_factory import (
-    MeanOfColumnsTargetComputer,
-)
+from src.student_performance.data_processors.imputer_factory import ImputerFactory
+from src.student_performance.data_processors.scaler_factory import ScalerFactory
+from src.student_performance.data_processors.encoder_factory import EncoderFactory
+from src.student_performance.data_processors.column_math_factory import ColumnMathFactory
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
 
 
 class PreprocessorBuilder:
     """
-    Builds preprocessing pipelines for features (X) and target (y) using
-    ordered steps defined in params.yaml. Skips any steps set to 'none'.
+    Dynamically builds X and Y preprocessing pipelines using configurable steps and methods.
+
+    Supported YAML step keys:
+        - imputation      → knn, simple, iterative (via ImputerFactory)
+        - standardization → standard_scaler, minmax_scaler, robust_scaler (via ScalerFactory)
+        - encoding        → one_hot, ordinal (via EncoderFactory)
+        - column_math     → mean, add, power, etc. (via ColumnMathFactory)
     """
+
+    @staticmethod
+    def _build_column_math(method: str, params: Dict):
+        try:
+            return ColumnMathFactory(
+                columns=params["input_column"],
+                operation=method,
+                output_column=params["output_column"],
+            )
+        except KeyError as e:
+            raise ValueError(f"Missing required parameter for column_math: {e}") from e
 
     STEP_BUILDERS = {
         "imputation": ImputerFactory.get_imputer_pipeline,
-        "encoding": EncoderFactory.get_encoder_pipeline,
         "standardization": ScalerFactory.get_scaler_pipeline,
-        "compute_target": (
-            lambda method, params: MeanOfColumnsTargetComputer(
-                source_columns=params.get("source_columns", []),
-                output_column=params.get("output_column", "target"),
-            )
-        ),
+        "encoding": EncoderFactory.get_encoder_pipeline,
+        "column_math": _build_column_math.__func__,
     }
 
-    @ensure_annotations
-    def __init__(self, steps: dict, methods: dict) -> None:
+    def __init__(self, steps: Optional[Dict] = None, methods: Optional[Dict] = None) -> None:
+        """
+        Args:
+            steps (Dict): Ordered step names per section (e.g., {"x": ["imputation", "encoding"]})
+            methods (Dict): Method config per section (e.g., {"x": {"imputation": {...}}})
+        """
         self.steps = steps or {}
         self.methods = methods or {}
 
     def _build_pipeline(self, section: str) -> Pipeline:
+        """
+        Build a scikit-learn pipeline for a given section ("x" or "y").
+
+        Args:
+            section (str): Section name ('x' or 'y')
+
+        Returns:
+            Pipeline: A scikit-learn Pipeline object
+        """
         try:
             pipeline_steps = []
-            ordered_steps = self.steps.get(section, [])
-            method_map = self.methods.get(section, {})
+            step_list = self.steps.get(section, [])
+            section_methods = self.methods.get(section, {})
 
-            for step_name in ordered_steps:
-                params = method_map.get(step_name, {})
-                method = params.get("method")
+            for step_name in step_list:
+                step_config = section_methods.get(step_name, {})
 
-                # Skip disabled or undefined
-                if not method or str(method).lower() == "none":
+                # Skip if explicitly set to "none"
+                if not step_config or (
+                    isinstance(step_config, str) and step_config.lower() == "none"
+                ):
                     logger.info(
-                        f"Skipping '{step_name}' for '{section}' because it is disabled."
+                        f"Skipping '{step_name}' step in section '{section}' as it is set to 'none'."
                     )
                     continue
 
-                builder = self.STEP_BUILDERS.get(step_name)
-                if not builder:
-                    raise ValueError(
-                        f"Unsupported step '{step_name}' in '{section}' pipeline."
-                    )
+                builder_fn = self.STEP_BUILDERS.get(step_name)
+                if not builder_fn:
+                    raise ValueError(f"Unsupported preprocessing step: '{step_name}'")
 
-                component = builder(method, params)
-                pipeline_steps.append((step_name, component))
+                if isinstance(step_config, (dict, ConfigBox)):
+                    method_name = step_config.get("method")
+                    step_params = {k: v for k, v in step_config.items() if k != "method"}
+                else:
+                    method_name = step_config
+                    step_params = {}
 
-            return Pipeline(steps=pipeline_steps)
+                step_object = builder_fn(method_name, step_params)
+                pipeline_steps.append((step_name, step_object))
 
-        except Exception as exc:
-            raise StudentPerformanceError(exc, logger) from exc
+            return Pipeline(pipeline_steps)
 
-    @ensure_annotations
-    def build(self) -> Tuple[Pipeline, Pipeline]:
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
+
+    def build(self) -> Tuple[Pipeline, Optional[Pipeline]]:
         """
-        Build and return a tuple of (x_pipeline, y_pipeline).
+        Builds preprocessing pipelines for both features (X) and target (Y).
+
+        Returns:
+            Tuple[Pipeline, Optional[Pipeline]]: Tuple containing x_pipeline and y_pipeline
         """
         try:
             x_pipeline = self._build_pipeline("x")
             y_pipeline = self._build_pipeline("y")
             return x_pipeline, y_pipeline
-        except Exception as exc:
-            raise StudentPerformanceError(exc, logger) from exc
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
 
 ================================================================================
 # PY FILE: src\student_performance\data_processors\scaler_factory.py
 ================================================================================
 
-"""Factory for building scaling pipelines for numerical data."""
-
 from typing import Optional
-
 from ensure import ensure_annotations
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
@@ -589,11 +613,10 @@ from src.student_performance.logging import logger
 class ScalerFactory:
     """
     Factory to build scaling pipelines for numerical features.
-    Supports: standard, minmax, robust.
-    Easily extendable with new scalers.
     """
+
     _SUPPORTED_METHODS = {
-        "standard": StandardScaler,
+        "standard_scaler": StandardScaler,
         "minmax": MinMaxScaler,
         "robust": RobustScaler,
     }
@@ -603,19 +626,8 @@ class ScalerFactory:
     def get_scaler_pipeline(
         method: str,
         params: Optional[dict] = None,
-        is_target: bool = False,
+        is_target: bool = False
     ) -> Pipeline:
-        """
-        Returns a sklearn Pipeline with a single scaler step.
-
-        Args:
-            method: Scaling method name.
-            params: Parameters for the scaler constructor.
-            is_target: Whether this scaler is for the target variable (unused by default).
-
-        Returns:
-            Pipeline: Pipeline containing one ('scaler', scaler_instance).
-        """
         try:
             if method not in ScalerFactory._SUPPORTED_METHODS:
                 raise ValueError(f"Unsupported scaler method: {method}")
@@ -625,8 +637,8 @@ class ScalerFactory:
 
             return Pipeline(steps=[("scaler", scaler)])
 
-        except Exception as exc:
-            raise StudentPerformanceError(exc, logger) from exc
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
 
 ================================================================================
 # PY FILE: src\student_performance\dbhandler\__init__.py

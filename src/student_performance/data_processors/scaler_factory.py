@@ -13,7 +13,7 @@ class ScalerFactory:
     """
 
     _SUPPORTED_METHODS = {
-        "standard": StandardScaler,
+        "standard_scaler": StandardScaler,
         "minmax": MinMaxScaler,
         "robust": RobustScaler,
     }

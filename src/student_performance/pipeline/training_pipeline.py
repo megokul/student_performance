@@ -48,7 +48,7 @@ class TrainingPipeline:
             if data_validation_artifact.validation_status:
                 data_transformation_config = self.config_manager.get_data_transformation_config()
                 data_transformation = DataTransformation(
-                    config=data_transformation_config,
+                    transformation_config=data_transformation_config,
                     validation_artifact=data_validation_artifact
                 )
                 data_transformation_artifact = data_transformation.run_transformation()

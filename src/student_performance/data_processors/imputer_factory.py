@@ -1,7 +1,11 @@
 from typing import Optional
 from ensure import ensure_annotations
 from sklearn.pipeline import Pipeline
-from sklearn.impute import KNNImputer, SimpleImputer, IterativeImputer
+from sklearn.impute import KNNImputer, SimpleImputer
+# explicitly require this experimental feature
+from sklearn.experimental import enable_iterative_imputer  # noqa
+# now you can import normally from impute
+from sklearn.impute import IterativeImputer
 
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
