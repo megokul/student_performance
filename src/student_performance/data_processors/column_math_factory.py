@@ -17,7 +17,7 @@ ColumnMathOperation = Literal[
 class ColumnMathFactory(BaseEstimator, TransformerMixin):
     """
     Transformer to apply mathematical operations to specified columns
-    and create a new output column.
+    and create a new output column—optionally dropping the inputs in place.
     """
 
     def __init__(
@@ -25,10 +25,12 @@ class ColumnMathFactory(BaseEstimator, TransformerMixin):
         columns: list[str],
         operation: ColumnMathOperation,
         output_column: str,
+        inplace: bool = False,
     ) -> None:
         self.columns = columns
         self.operation = operation.lower()
         self.output_column = output_column
+        self.inplace = inplace
 
     def fit(self, X: pd.DataFrame, y: pd.Series = None) -> "ColumnMathFactory":
         return self
@@ -60,11 +62,15 @@ class ColumnMathFactory(BaseEstimator, TransformerMixin):
                 raise ValueError(f"Unsupported operation: {self.operation}")
 
             logger.info(
-                "Applied '%s' operation on columns: %s → '%s'",
+                "Applied '%s' on %s → '%s' (inplace=%s)",
                 self.operation,
                 self.columns,
-                self.output_column
+                self.output_column,
+                self.inplace,
             )
+
+            if self.inplace:
+                df.drop(columns=self.columns, inplace=True)
 
             return df
 

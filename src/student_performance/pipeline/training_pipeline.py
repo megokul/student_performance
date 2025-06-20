@@ -65,8 +65,9 @@ class TrainingPipeline:
             # Step 5: Run model training
             model_trainer_config = self.config_manager.get_model_trainer_config()
             model_trainer = ModelTrainer(
-                config=model_trainer_config,
+                trainer_config=model_trainer_config,
                 transformation_artifact=data_transformation_artifact,
+                backup_handler=s3_handler,
             )
             model_trainer_artifact = model_trainer.run_training()
             logger.info(f"Model Trainer Artifact: {model_trainer_artifact}")

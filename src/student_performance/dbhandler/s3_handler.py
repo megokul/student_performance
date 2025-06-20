@@ -210,7 +210,7 @@ class S3Handler(DBHandler):
         except Exception as e:
             logger.exception("Failed to stream object to S3.")
             raise StudentPerformanceError(e, logger) from e
-        
+
     def stream_npy(self, array: np.ndarray, s3_key: str) -> str:
         """
         Serialize a NumPy array in .npy format into memory and upload it to S3.
@@ -233,4 +233,30 @@ class S3Handler(DBHandler):
 
         except Exception as e:
             logger.exception("Failed to stream .npy to S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def load_npy(self, s3_uri: str) -> np.ndarray:
+        """
+        Load a .npy‐serialized NumPy array from S3 into memory.
+        
+        Args:
+            s3_uri:  The full S3 URI (e.g. "s3://bucket/key.npy").
+        Returns:
+            The deserialized NumPy array.
+        """
+        try:
+            # parse out bucket and key
+            bucket, key = self._parse_s3_uri(s3_uri)
+            # fetch the object
+            resp = self._client.get_object(Bucket=bucket, Key=key)
+            data = resp["Body"].read()
+            # load into a BytesIO and then np.load
+            buf = BytesIO(data)
+            buf.seek(0)
+            arr = np.load(buf, allow_pickle=False)
+            logger.info("Loaded .npy from S3: %s", s3_uri)
+            return arr
+
+        except Exception as e:
+            logger.exception("Failed to load .npy from S3.")
             raise StudentPerformanceError(e, logger) from e

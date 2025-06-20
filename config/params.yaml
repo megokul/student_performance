@@ -46,6 +46,7 @@ transformation_params:
       column_math:
         method: mean_of_columns
         output_column: mean_score
+        inplace: True
         input_column:
           - math_score
           - reading_score
