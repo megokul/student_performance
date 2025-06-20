@@ -1,0 +1,266 @@
+📦 Project Structure of: e:\MyProjects\student_performance
+
+📁 .dvc/
+    📄 .gitignore
+    📁 cache/
+        📁 files/
+            📁 md5/
+                📁 0f/
+                    📄 975ccad81cfc1740f1f18074b3c9c9
+                📁 13/
+                    📄 82374863ba39dd656afe46f38ffb9e
+                📁 1f/
+                    📄 0b684893b7f866f30cb939029c39e9
+                📁 45/
+                    📄 96fc0d23dece88cc89fcd65988ffd2
+                📁 4c/
+                    📄 410067e554d8e3819ceadb22d60642.dir
+                📁 71/
+                    📄 c07b364b7b805630d022dce1220e81
+                📁 73/
+                    📄 0ebe8b1090866cb01988d22afce4ef
+                📁 aa/
+                    📄 f1464b54736c5c0226a793edb94867
+    📄 config
+    📁 tmp/
+        📄 btime
+        📄 dag.md
+        📁 exps/
+            📁 cache/
+                📁 34/
+                    📄 7674887826489d42dfb30b52fd8d7d22fb75cc
+                📁 3e/
+                    📄 6e1f6e9393a8121b0e61a498ade9ad72cb6f95
+                📁 54/
+                    📄 a93ab55171fe98ee890eaf8449cd77c6c29d92
+                📁 8c/
+                    📄 f00e84a3fe5fcbd10fe2af9abe9c6ddf51df6e
+                📁 95/
+                    📄 ac212445d39e4edf188caaced37d4ef9621684
+                📁 b5/
+                    📄 3d99b9828fe4c4d6613727a75f193e327cf136
+                📁 cd/
+                    📄 c899ddc878039eb26faad7c939e6eab499f5e8
+            📁 celery/
+                📁 broker/
+                    📁 control/
+                    📁 in/
+                    📁 processed/
+                📁 result/
+        📄 lock
+        📄 rwlock
+        📄 rwlock.lock
+📄 .dvcignore
+📄 .env
+📄 .gitignore
+📄 Dockerfile
+📄 app.py
+📁 artifacts/
+    📁 2025_06_13T18_29_38Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+            📁 data_processor/
+                📄 x_preprocessor.joblib
+                📄 y_preprocessor.joblib
+            📁 test/
+                📄 x_test.npy
+                📄 y_test.npy
+            📁 train/
+                📄 x_train.npy
+                📄 y_train.npy
+            📁 val/
+                📄 x_val.npy
+                📄 y_val.npy
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T18_34_49Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+            📁 data_processor/
+                📄 x_preprocessor.joblib
+                📄 y_preprocessor.joblib
+            📁 test/
+                📄 x_test.npy
+                📄 y_test.npy
+            📁 train/
+                📄 x_train.npy
+                📄 y_train.npy
+            📁 val/
+                📄 x_val.npy
+                📄 y_val.npy
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T18_35_27Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+            📁 data_processor/
+                📄 x_preprocessor.joblib
+                📄 y_preprocessor.joblib
+            📁 test/
+                📄 x_test.npy
+                📄 y_test.npy
+            📁 train/
+                📄 x_train.npy
+                📄 y_train.npy
+            📁 val/
+                📄 x_val.npy
+                📄 y_val.npy
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+    📁 2025_06_13T19_21_42Z/
+        📁 data_ingestion/
+            📁 ingested_data/
+                📄 ingested_data.csv
+            📁 raw_data/
+                📄 raw.csv
+        📁 data_transformation/
+            📁 data_processor/
+                📄 x_preprocessor.joblib
+                📄 y_preprocessor.joblib
+            📁 test/
+                📄 x_test.npy
+                📄 y_test.npy
+            📁 train/
+                📄 x_train.npy
+                📄 y_train.npy
+            📁 val/
+                📄 x_val.npy
+                📄 y_val.npy
+        📁 data_validation/
+            📁 reports/
+                📄 categorical_report.yaml
+                📄 drift_report.yaml
+                📄 duplicates_report.yaml
+                📄 missing_values_report.yaml
+                📄 validation_report.yaml
+            📁 validated/
+                📄 validated_data.csv
+📁 config/
+    📄 config.yaml
+    📄 params.yaml
+    📄 schema.yaml
+    📄 templates.yaml
+📁 data/
+    📁 raw/
+        📄 raw.csv
+    📁 transformed/
+        📄 x_test.npy
+        📄 x_train.npy
+        📄 x_val.npy
+        📄 y_test.npy
+        📄 y_train.npy
+        📄 y_val.npy
+    📁 validated/
+        📄 validated_data.csv
+📄 data.dvc
+📄 debug.py
+📁 logs/
+    📁 2025_06_13T18_29_38Z/
+        📄 2025_06_13T18_29_38Z.log
+    📁 2025_06_13T18_32_35Z/
+        📄 2025_06_13T18_32_35Z.log
+    📁 2025_06_13T18_33_10Z/
+        📄 2025_06_13T18_33_10Z.log
+    📁 2025_06_13T18_33_28Z/
+        📄 2025_06_13T18_33_28Z.log
+    📁 2025_06_13T18_34_34Z/
+        📄 2025_06_13T18_34_34Z.log
+    📁 2025_06_13T18_34_49Z/
+        📄 2025_06_13T18_34_49Z.log
+    📁 2025_06_13T18_35_27Z/
+        📄 2025_06_13T18_35_27Z.log
+    📁 2025_06_13T19_21_42Z/
+        📄 2025_06_13T19_21_42Z.log
+📄 main.py
+📁 notebook/
+    📄 research.ipynb
+📄 project_code_dump_index.txt
+📄 project_code_dump_part1.txt
+📄 project_dump.py
+📄 project_structure.txt
+📄 project_template.py
+📄 requirements.txt
+📁 research/
+    📄 research.ipynb
+📄 setup.py
+📁 src/
+    📁 student_performance/
+        📄 __init__.py
+        📁 components/
+            📄 __init__.py
+            📄 data_ingestion.py
+            📄 data_transformation.py
+            📄 data_validation.py
+            📄 model_trainer.py
+        📁 config/
+            📄 __init__.py
+            📄 configuration.py
+        📁 constants/
+            📄 __init__.py
+            📄 constants.py
+        📁 data_processors/
+            📄 __init__.py
+            📄 column_math_factory.py
+            📄 encoder_factory.py
+            📄 imputer_factory.py
+            📄 preprocessor_builder.py
+            📄 scaler_factory.py
+        📁 dbhandler/
+            📄 __init__.py
+            📄 base_handler.py
+            📄 postgres_dbhandler.py
+            📄 s3_handler.py
+        📁 entity/
+            📄 __init__.py
+            📄 artifact_entity.py
+            📄 config_entity.py
+        📁 exception/
+            📄 __init__.py
+            📄 exception.py
+        📁 logging/
+            📄 __init__.py
+            📄 app_logger.py
+        📁 pipeline/
+            📄 __init__.py
+            📄 training_pipeline.py
+        📁 utils/
+            📄 __init__.py
+            📄 core.py
+            📄 timestamp.py
+📁 student_data/
+    📄 stud.csv
+📁 templates/
+    📄 index.html

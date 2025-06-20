@@ -1,0 +1,625 @@
+--- CODE DUMP | PART 4 of 4 ---
+
+
+================================================================================
+# PY FILE: src\student_performance\pipeline\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\pipeline\training_pipeline.py
+================================================================================
+
+from src.student_performance.config.configuration import ConfigurationManager
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.dbhandler.postgres_dbhandler import PostgresDBHandler
+from src.student_performance.logging import logger
+
+from src.student_performance.components.data_ingestion import DataIngestion
+from src.student_performance.components.data_validation import DataValidation
+from src.student_performance.components.data_transformation import DataTransformation
+from src.student_performance.components.model_trainer import ModelTrainer
+
+
+class TrainingPipeline:
+    def __init__(self):
+        try:
+            logger.info("Initializing TrainingPipeline...")
+            self.config_manager = ConfigurationManager()
+        except Exception as e:
+            raise StudentPerformanceError(e, "Failed to initialize TrainingPipeline.") from e
+
+    def run_pipeline(self):
+        try:
+            logger.info("========== Training Pipeline Started ==========")
+
+            # Step 1: Setup configurations and database handler
+            postgres_config = self.config_manager.get_postgres_handler_config()
+            data_ingestion_config = self.config_manager.get_data_ingestion_config()
+            postgresdb_handler = PostgresDBHandler(postgres_config=postgres_config)
+
+            # Step 2: Run data ingestion
+            data_ingestion = DataIngestion(
+                ingestion_config=data_ingestion_config,
+                db_handler=postgresdb_handler,
+            )
+            data_ingestion_artifact = data_ingestion.run_ingestion()
+            logger.info(f"Data Ingestion Artifact: {data_ingestion_artifact}")
+
+            # Step 3: Run data validation
+            data_validation_config = self.config_manager.get_data_validation_config()
+            data_validation = DataValidation(
+                validation_config=data_validation_config,
+                ingestion_artifact=data_ingestion_artifact,
+            )
+            data_validation_artifact = data_validation.run_validation()
+            logger.info(f"Data Validation Artifact: {data_validation_artifact}")
+
+            # Step 4: Run data transformation
+            if data_validation_artifact.validation_status:
+                data_transformation_config = self.config_manager.get_data_transformation_config()
+                data_transformation = DataTransformation(
+                    transformation_config=data_transformation_config,
+                    validation_artifact=data_validation_artifact,
+                )
+                data_transformation_artifact = data_transformation.run_transformation()
+                logger.info(f"Data Transformation Artifact: {data_transformation_artifact}")
+            else:
+                logger.warning("Data validation failed. Skipping data transformation.")
+                return
+
+            # Step 5: Run model training
+            model_trainer_config = self.config_manager.get_model_trainer_config()
+            model_trainer = ModelTrainer(
+                config=model_trainer_config,
+                transformation_artifact=data_transformation_artifact,
+            )
+            model_trainer_artifact = model_trainer.run_training()
+            logger.info(f"Model Trainer Artifact: {model_trainer_artifact}")
+
+            logger.info("========== Training Pipeline Completed ==========")
+
+        except Exception as e:
+            raise StudentPerformanceError(e, "TrainingPipeline failed.") from e
+
+================================================================================
+# PY FILE: src\student_performance\utils\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\utils\core.py
+================================================================================
+
+import pandas as pd
+from pathlib import Path
+from box import ConfigBox
+from box.exceptions import BoxValueError, BoxTypeError, BoxKeyError
+from ensure import ensure_annotations
+import yaml
+import json
+import numpy as np
+import pandas as pd
+import joblib
+
+from src.student_performance.logging import logger
+from src.student_performance.exception.exception import StudentPerformanceError
+
+
+@ensure_annotations
+def read_yaml(path_to_yaml: Path) -> ConfigBox:
+    """
+    Load a YAML file and return its contents as a ConfigBox for dot-access.
+
+    Raises:
+        StudentPerformanceError: If the file is missing, corrupted, or unreadable.
+    """
+    if not path_to_yaml.exists():
+        msg = f"YAML file not found: '{path_to_yaml}'"
+        raise StudentPerformanceError(FileNotFoundError(msg), msg)
+
+    try:
+        with path_to_yaml.open("r", encoding="utf-8") as file:
+            content = yaml.safe_load(file)
+    except (BoxValueError, BoxTypeError, BoxKeyError, yaml.YAMLError) as e:
+        msg = f"Failed to parse YAML from: '{path_to_yaml.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+    except Exception as e:
+        msg = f"Unexpected error while reading YAML from: '{path_to_yaml.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+    if content is None:
+        msg = f"YAML file is empty or improperly formatted: '{path_to_yaml}'"
+        raise StudentPerformanceError(ValueError(msg), msg)
+
+    logger.info(f"YAML successfully loaded from: '{path_to_yaml.as_posix()}'")
+    return ConfigBox(content)
+
+
+@ensure_annotations
+def save_to_csv(df: pd.DataFrame, *paths: Path, label: str):
+    try:
+        for path in paths:
+            path = Path(path)
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            df.to_csv(path, index=False)
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+    except Exception as e:
+        msg = f"Failed to save CSV to: '{path.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+
+@ensure_annotations
+def read_csv(filepath: Path) -> pd.DataFrame:
+    """
+    Read a CSV file into a Pandas DataFrame.
+
+    Raises:
+        StudentPerformanceError: If the file is missing, corrupted, or unreadable.
+    """
+    if not filepath.exists():
+        msg = f"CSV file not found: '{filepath}'"
+        raise StudentPerformanceError(FileNotFoundError(msg), msg)
+
+    try:
+        df = pd.read_csv(filepath)
+        logger.info(f"CSV file read successfully from: '{filepath.as_posix()}'")
+        return df
+    except Exception as e:
+        msg = f"Failed to read CSV from: '{filepath.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+@ensure_annotations
+def save_to_yaml(data: dict, *paths: Path, label: str):
+    """
+    Write a dict out to YAML, always using UTF-8.
+    """
+    try:
+        for path in paths:
+            path = Path(path)
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            # Write UTF-8
+            with open(path, "w", encoding="utf-8") as file:
+                yaml.dump(data, file, sort_keys=False)
+
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+    except Exception as e:
+        msg = f"Failed to read CSV from: '{path.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+@ensure_annotations
+def save_to_json(data: dict, *paths: Path, label: str):
+    try:
+        for path in paths:
+            path = Path(path)
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+    except Exception as e:
+        msg = f"Failed to read CSV from: '{path.as_posix()}' — {e}"
+        raise StudentPerformanceError(e, msg) from e
+
+
+@ensure_annotations
+def save_object(obj: object, path: Path, label: str):
+    """
+    Saves a serializable object using joblib to the specified path.
+
+    Args:
+        obj (object): The object to serialize.
+        path (Path): The path to save the object.
+        label (str): Label used for logging context.
+    """
+    try:
+        path = Path(path)
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+        else:
+            logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+        joblib.dump(obj, path)
+        logger.info(f"{label} saved to: '{path.as_posix()}'")
+
+    except Exception as e:
+        msg = f"Failed to save {label} to: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e
+
+
+@ensure_annotations
+def save_array(array: np.ndarray | pd.Series, *paths: Path, label: str):
+    """
+    Saves a NumPy array or pandas Series to the specified paths in `.npy` format.
+
+    Args:
+        array (Union[np.ndarray, pd.Series]): Data to save.
+        *paths (Path): One or more file paths.
+        label (str): Label for logging.
+    """
+    try:
+        array = np.asarray(array)
+
+        for path in paths:
+            path = Path(path)
+
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+
+            np.save(path, array)
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
+
+    except Exception as e:
+        msg = f"Failed to save {label} to: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e
+
+
+@ensure_annotations
+def load_array(path: Path, label: str) -> np.ndarray:
+    """
+    Loads a NumPy array from the specified `.npy` file path.
+
+    Args:
+        path (Path): Path to the `.npy` file.
+        label (str): Label for logging.
+
+    Returns:
+        np.ndarray: Loaded NumPy array.
+    """
+    try:
+        path = Path(path)
+
+        if not path.exists():
+            raise FileNotFoundError(f"{label} file not found at path: '{path.as_posix()}'")
+
+        array = np.load(path)
+        logger.info(f"{label} loaded successfully from: '{path.as_posix()}'")
+        return array
+
+    except Exception as e:
+        msg = f"Failed to load {label} from: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\utils\timestamp.py
+================================================================================
+
+from datetime import datetime, timezone
+
+_timestamp_cache: str | None = None
+
+def get_utc_timestamp() -> str:
+    format="%Y_%m_%dT%H_%M_%SZ"
+    global _timestamp_cache
+    if _timestamp_cache is None:
+        _timestamp_cache = datetime.now(timezone.utc).strftime(format)
+    return _timestamp_cache
+
+================================================================================
+# YAML FILE: config\config.yaml
+================================================================================
+
+# PostGres configuration
+postgres_dbhandler:
+  input_data_dir: student_data
+  input_data_filename: stud.csv
+  dbname: student_performance_db
+  table_name: student_scores
+
+# Data ingestion configuration
+data_ingestion:
+  raw_data_filename: raw.csv
+  ingested_data_filename: ingested_data.csv
+
+# Data validation configuration
+data_validation:
+  validated_data_filename: validated_data.csv
+  missing_report_filename: missing_values_report.yaml
+  duplicates_report_filename: duplicates_report.yaml
+  drift_report_filename: drift_report.yaml
+  validation_report_filename: validation_report.yaml
+  categorical_report_filename: categorical_report.yaml
+
+# Data transformation configuration
+data_transformation:
+  x_train_filename: x_train.npy
+  y_train_filename: y_train.npy
+  x_val_filename: x_val.npy
+  y_val_filename: y_val.npy
+  x_test_filename: x_test.npy
+  y_test_filename: y_test.npy
+  x_preprocessor_filename: x_preprocessor.joblib
+  y_preprocessor_filename: y_preprocessor.joblib
+
+# Model trainer configuration
+model_trainer:
+  model_dir: saved_models
+  trained_model_filename: model.joblib
+  training_report_filename: training_report.yaml
+
+s3_handler:
+  final_model_s3_bucket: studentperformance-dev-artifacts
+  s3_final_model_prefix: final_inference_model
+  s3_artifacts_prefix: artifacts
+
+data_backup:
+  s3_enabled: true
+  local_enabled: false
+
+================================================================================
+# YAML FILE: config\params.yaml
+================================================================================
+
+# Parameters for drift detection during data validation
+validation_params:
+  drift_detection:
+    enabled: true
+    method: ks_test
+    p_value_threshold: 0.05
+
+  schema_check:
+    enabled: true
+    method: hash
+
+transformation_params:
+  data_split:
+    train_size: 0.6
+    val_size: 0.2
+    test_size: 0.2
+    random_state: 42
+    stratify: false
+
+  steps:
+    x:
+      - encoding
+      - standardization
+    y:
+      - column_math
+      - standardization
+
+  methods:
+    x:
+      encoding:
+        method: one_hot
+        handle_unknown: ignore
+        columns:
+          - gender
+          - race_ethnicity
+          - parental_level_of_education
+          - lunch
+          - test_preparation_course
+
+      standardization:
+        method: standard_scaler
+        with_mean: false
+        with_std: true
+
+    y:
+      column_math:
+        method: mean_of_columns
+        output_column: mean_score
+        input_column:
+          - math_score
+          - reading_score
+          - writing_score
+
+      standardization:
+        method: standard_scaler
+        with_mean: true
+        with_std: true
+
+model_trainer:
+  models:
+    - name: sklearn.ensemble.RandomForestRegressor
+      params:
+        n_estimators: 100
+        max_depth: 10
+        random_state: 42
+      search_space:
+        n_estimators:
+          distribution: int
+          low: 50
+          high: 300
+          step: 10
+        max_depth:
+          distribution: int
+          low: 5
+          high: 50
+          step: 1
+
+    - name: sklearn.ensemble.GradientBoostingRegressor
+      params:
+        n_estimators: 100
+        learning_rate: 0.1
+        max_depth: 3
+        random_state: 42
+      search_space:
+        n_estimators:
+          distribution: int
+          low: 50
+          high: 200
+          step: 10
+        learning_rate:
+          distribution: float
+          low: 0.01
+          high: 1.0
+          log: true
+        max_depth:
+          distribution: int
+          low: 2
+          high: 10
+
+  optimization:
+    enabled: true
+    method: optuna
+    n_trials: 30
+    direction: minimize
+    cv_folds: 5
+    scoring: neg_root_mean_squared_error
+
+  tracking:
+    mlflow:
+      enabled: true
+      experiment_name: StudentPerformanceExperiment
+      registry_model_name: StudentPerformanceModel
+      metrics_to_log:
+        - neg_root_mean_squared_error
+        - r2
+        - neg_mean_absolute_error
+        - neg_mean_squared_error
+      log_trials: false
+
+================================================================================
+# YAML FILE: config\schema.yaml
+================================================================================
+
+table_schema:
+  student_scores:
+    columns:
+      id:
+        type: "SERIAL PRIMARY KEY"
+
+      gender:
+        type: "VARCHAR(10)"
+        constraints:
+          allowed_values:
+            - "male"
+            - "female"
+
+      race_ethnicity:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "group A"
+            - "group B"
+            - "group C"
+            - "group D"
+            - "group E"
+
+      parental_level_of_education:
+        type: "VARCHAR(50)"
+        constraints:
+          allowed_values:
+            - "some high school"
+            - "high school"
+            - "associate's degree"
+            - "some college"
+            - "bachelor's degree"
+            - "master's degree"
+
+      lunch:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "standard"
+            - "free/reduced"
+
+      test_preparation_course:
+        type: "VARCHAR(20)"
+        constraints:
+          allowed_values:
+            - "none"
+            - "completed"
+
+      math_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+      reading_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+      writing_score:
+        type: "INT"
+        constraints:
+          min: 0
+          max: 100
+
+validation_schema:
+  columns:
+    id: int64
+    gender: object
+    race_ethnicity: object
+    parental_level_of_education: object
+    lunch: object
+    test_preparation_course: object
+    math_score: int64
+    reading_score: int64
+    writing_score: int64
+
+  allowed_values:
+    gender:
+      - male
+      - female
+    race_ethnicity:
+      - group A
+      - group B
+      - group C
+      - group D
+      - group E
+    parental_level_of_education:
+      - some high school
+      - high school
+      - some college
+      - associate's degree
+      - bachelor's degree
+      - master's degree
+    lunch:
+      - standard
+      - free/reduced
+    test_preparation_course:
+      - none
+      - completed
+
+target_column:
+  - math_score
+  - reading_score
+  - writing_score
+
+================================================================================
+# YAML FILE: config\templates.yaml
+================================================================================
+
+validation_report:
+  timestamp: ""
+  
+  validation_status: null
+  critical_passed: null
+  non_critical_passed: null
+
+  schema_check_type: ""
+  drift_check_method: ""
+
+  check_results:
+    critical_checks:
+      schema_is_match: null
+      no_data_drift: null
+
+    non_critical_checks:
+      no_missing_values: null
+      no_duplicate_rows: null

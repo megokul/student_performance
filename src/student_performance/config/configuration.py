@@ -22,16 +22,20 @@ from src.student_performance.constants.constants import (
     TRANSFORM_TEST_SUBDIR,
     TRANSFORM_VAL_SUBDIR,
     TRANSFORM_PROCESSOR_SUBDIR,
+    MODEL_TRAINER_ROOT,
 )
+
 from pathlib import Path
 import os
 from src.student_performance.utils.timestamp import get_utc_timestamp
 from src.student_performance.utils.core import read_yaml
 from src.student_performance.entity.config_entity import (
     PostgresDBHandlerConfig,
+    S3HandlerConfig,
     DataIngestionConfig,
     DataValidationConfig,
     DataTransformationConfig,
+    ModelTrainerConfig,
 )
 
 class ConfigurationManager:
@@ -79,25 +83,61 @@ class ConfigurationManager:
             table_schema=table_schema,
         )
 
+    def get_s3_handler_config(self) -> S3HandlerConfig:
+        s3_config = self.config.s3_handler  # your config.yaml has these under model_pusher
+        root_dir = self.artifacts_root / "s3_handler"
+        aws_region = os.getenv("AWS_REGION")
+
+        return S3HandlerConfig(
+            root_dir=root_dir,
+            bucket_name=s3_config.final_model_s3_bucket,
+            aws_region=aws_region,
+            local_dir_to_sync=self.artifacts_root,  # assuming you want to sync entire artifacts dir
+            s3_artifacts_prefix=s3_config.s3_artifacts_prefix,
+            s3_final_model_prefix=s3_config.s3_final_model_prefix,
+        )
+
+    def _build_s3_key(self, prefix: str, path: Path, relative_to: Path) -> str:
+        """
+        Build an S3 key by combining a prefix and the relative path of a file.
+
+        Args:
+            prefix (str): S3 base prefix (e.g., 'artifacts')
+            path (Path): Full local path to the file
+            relative_to (Path): The root to compute relative path from
+
+        Returns:
+            str: S3 key in POSIX format (forward slashes)
+        """
+        return f"{prefix}/{path.relative_to(relative_to).as_posix()}"
+
+
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         ingestion_config = self.config.data_ingestion
-        raw_data_filename = ingestion_config.raw_data_filename
-        ingested_data_filename = ingestion_config.ingested_data_filename
+        data_backup_config = self.config.data_backup
 
+        # File names
+        raw_name = ingestion_config.raw_data_filename
+        ingested_name = ingestion_config.ingested_data_filename
+
+        # Local paths
         root_dir = self.artifacts_root / INGEST_ROOT
-        raw_data_filepath = root_dir / INGEST_RAW_SUBDIR / raw_data_filename
-        dvc_raw_filepath = Path(DVC_ROOT) / DVC_RAW_SUBDIR / raw_data_filename
-        ingested_data_filepath = root_dir / INGEST_INGESTED_SUBDIR / ingested_data_filename
+        raw_filepath = root_dir / INGEST_RAW_SUBDIR / raw_name
+        dvc_raw_filepath = Path(DVC_ROOT) / DVC_RAW_SUBDIR / raw_name
+        ingested_filepath = root_dir / INGEST_INGESTED_SUBDIR / ingested_name
 
         return DataIngestionConfig(
             root_dir=root_dir,
-            raw_data_filepath=raw_data_filepath,
+            raw_filepath=raw_filepath,
             dvc_raw_filepath=dvc_raw_filepath,
-            ingested_data_filepath=ingested_data_filepath,
+            ingested_filepath=ingested_filepath,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
         )
 
     def get_data_validation_config(self) -> DataValidationConfig:
         validation_config = self.config.data_validation
+        data_backup_config = self.config.data_backup
         schema = self.schema.validation_schema
         report_template = self.templates.validation_report
         validation_params = self.params.validation_params
@@ -131,12 +171,15 @@ class ConfigurationManager:
             drift_report_filepath=drift_report_filepath,
             validation_report_filepath=validation_report_filepath,
             categorical_report_filepath=categorical_report_filepath,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
         )
 
     def get_data_transformation_config(self) -> DataTransformationConfig:
         transformation_config = self.config.data_transformation
         transformation_params = self.params.transformation_params
         output_column = self.schema.target_column
+        data_backup_config = self.config.data_backup
 
         root_dir = self.artifacts_root / TRANSFORM_ROOT
 
@@ -180,4 +223,27 @@ class ConfigurationManager:
             y_test_dvc_filepath=y_test_dvc,
             x_preprocessor_filepath=x_processor_path,
             y_preprocessor_filepath=y_processor_path,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+        )
+
+    def get_model_trainer_config(self) -> ModelTrainerConfig:
+        trainer_config = self.config.model_trainer
+        trainer_params = self.params.model_trainer
+        data_backup_config = self.config.data_backup
+
+        root_dir = self.artifacts_root / MODEL_TRAINER_ROOT
+
+        mlflow_cfg = trainer_params.tracking
+        mlflow_cfg.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+
+        return ModelTrainerConfig(
+            root_dir=root_dir,
+            trained_model_filepath=trainer_config.trained_model_filename,
+            training_report_filepath=trainer_config.training_report_filename,
+            models=trainer_params.models,
+            optimization=trainer_params.optimization,
+            tracking=mlflow_cfg,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
         )

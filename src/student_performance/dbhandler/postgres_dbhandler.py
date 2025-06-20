@@ -10,9 +10,9 @@ from box import ConfigBox
 
 
 class PostgresDBHandler(DBHandler):
-    def __init__(self, postgres_config: PostgresDBHandlerConfig) -> None:
+    def __init__(self, config: PostgresDBHandlerConfig) -> None:
         logger.info("Initializing PostgresDBHandler")
-        self.postgres_config = postgres_config
+        self.config = config
         self._connection: psycopg2.extensions.connection | None = None
         self._cursor: psycopg2.extensions.cursor | None = None
 
@@ -21,11 +21,11 @@ class PostgresDBHandler(DBHandler):
         if not self._connection or self._connection.closed:
             try:
                 self._connection = psycopg2.connect(
-                    host=self.postgres_config.host,
-                    port=self.postgres_config.port,
-                    dbname=self.postgres_config.dbname,
-                    user=self.postgres_config.user,
-                    password=self.postgres_config.password,
+                    host=self.config.host,
+                    port=self.config.port,
+                    dbname=self.config.dbname,
+                    user=self.config.user,
+                    password=self.config.password,
                 )
                 self._cursor = self._connection.cursor()
                 logger.info("Successfully connected to PostgreSQL")
@@ -54,16 +54,16 @@ class PostgresDBHandler(DBHandler):
         logger.info("PostgreSQL ping completed")
 
     def load_from_source(self) -> pd.DataFrame:
-        logger.info(f"Loading data from PostgreSQL table: {self.postgres_config.table_name}")
+        logger.info(f"Loading data from PostgreSQL table: {self.config.table_name}")
         try:
             self._connect()
-            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.postgres_config.table_name))
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.config.table_name))
             logger.info(f"Executing query: {query.as_string(self._connection)}")
             df = pd.read_sql_query(query.as_string(self._connection), self._connection)
-            logger.info(f"DataFrame loaded from PostgreSQL table: {self.postgres_config.table_name}")
+            logger.info(f"DataFrame loaded from PostgreSQL table: {self.config.table_name}")
             return df
         except Exception as e:
-            msg = f"Failed to load data from PostgreSQL table: {self.postgres_config.table_name}"
+            msg = f"Failed to load data from PostgreSQL table: {self.config.table_name}"
             raise StudentPerformanceError(e, msg) from e
 
     def get_table_list(self) -> list[str]:
@@ -105,11 +105,11 @@ class PostgresDBHandler(DBHandler):
         Raises:
             StudentPerformanceError: If table creation fails.
         """
-        logger.info(f"Creating table from schema: {self.postgres_config.table_name}")
+        logger.info(f"Creating table from schema: {self.config.table_name}")
         try:
             self._connect()
 
-            table_name = self.postgres_config.table_name
+            table_name = self.config.table_name
 
             # Check if table exists
             query = sql.SQL("""
@@ -128,7 +128,7 @@ class PostgresDBHandler(DBHandler):
                 return
 
             # Access columns via dot-notation
-            table_schema = self.postgres_config.table_schema[table_name].columns
+            table_schema = self.config.table_schema[table_name].columns
 
             column_definitions = []
 
@@ -170,7 +170,7 @@ class PostgresDBHandler(DBHandler):
         except Exception as e:
             msg = f"Failed to create table: '{table_name}'"
             raise StudentPerformanceError(e, msg) from e
-        logger.info(f"Finished creating table from schema: {self.postgres_config.table_name}")
+        logger.info(f"Finished creating table from schema: {self.config.table_name}")
 
     def insert_data_from_csv(self) -> None:
         """
@@ -179,17 +179,17 @@ class PostgresDBHandler(DBHandler):
         Raises:
             StudentPerformanceError: If data insertion fails.
         """
-        logger.info(f"Inserting data from CSV into table: {self.postgres_config.table_name}")
+        logger.info(f"Inserting data from CSV into table: {self.config.table_name}")
         try:
             self._connect()
             
             # Read the CSV file into a Pandas DataFrame
-            csv_filepath = self.postgres_config.input_data_filepath
+            csv_filepath = self.config.input_data_filepath
             logger.info(f"Reading CSV file: {csv_filepath}")
             df = pd.read_csv(csv_filepath)
             
             # Get the table name
-            table_name = self.postgres_config.table_name
+            table_name = self.config.table_name
             
             # Define the SQL INSERT query
             columns = ', '.join(df.columns)
@@ -209,10 +209,10 @@ class PostgresDBHandler(DBHandler):
             self._connection.commit()
             
         except Exception as e:
-            msg = f"Failed to insert data from CSV into table: {self.postgres_config.table_name}"
+            msg = f"Failed to insert data from CSV into table: {self.config.table_name}"
             raise StudentPerformanceError(e, msg) from e
-        logger.info(f"Successfully inserted data from CSV into table: {self.postgres_config.table_name}")
-        logger.info(f"Finished inserting data from CSV into table: {self.postgres_config.table_name}")
+        logger.info(f"Successfully inserted data from CSV into table: {self.config.table_name}")
+        logger.info(f"Finished inserting data from CSV into table: {self.config.table_name}")
 
     def read_data_to_df(self) -> pd.DataFrame:
         """
@@ -224,15 +224,15 @@ class PostgresDBHandler(DBHandler):
         Raises:
             StudentPerformanceError: If reading data fails.
         """
-        logger.info(f"Reading data from PostgreSQL table: {self.postgres_config.table_name}")
+        logger.info(f"Reading data from PostgreSQL table: {self.config.table_name}")
         try:
             self._connect()
-            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.postgres_config.table_name))
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.config.table_name))
             logger.info(f"Executing query: {query.as_string(self._connection)}")
             df = pd.read_sql_query(query.as_string(self._connection), self._connection)
-            logger.info(f"Successfully read data from PostgreSQL table: {self.postgres_config.table_name}")
-            logger.info(f"Finished reading data from PostgreSQL table: {self.postgres_config.table_name}")
+            logger.info(f"Successfully read data from PostgreSQL table: {self.config.table_name}")
+            logger.info(f"Finished reading data from PostgreSQL table: {self.config.table_name}")
             return df
         except Exception as e:
-            msg = f"Failed to read data from PostgreSQL table: {self.postgres_config.table_name}"
+            msg = f"Failed to read data from PostgreSQL table: {self.config.table_name}"
             raise StudentPerformanceError(e, msg) from e

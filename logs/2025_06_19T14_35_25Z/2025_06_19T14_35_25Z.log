@@ -1,0 +1,33 @@
+[2025-06-19 15:35:27,939] - INFO - training_pipeline - Initializing TrainingPipeline...
+[2025-06-19 15:35:27,948] - INFO - core - YAML successfully loaded from: 'config/config.yaml'
+[2025-06-19 15:35:27,970] - INFO - core - YAML successfully loaded from: 'config/params.yaml'
+[2025-06-19 15:35:27,976] - INFO - core - YAML successfully loaded from: 'config/schema.yaml'
+[2025-06-19 15:35:27,989] - INFO - core - YAML successfully loaded from: 'config/templates.yaml'
+[2025-06-19 15:35:27,990] - INFO - training_pipeline - ========== Training Pipeline Started ==========
+[2025-06-19 15:35:27,991] - INFO - postgres_dbhandler - Initializing PostgresDBHandler
+[2025-06-19 15:35:28,160] - INFO - s3_handler - S3Handler initialized for bucket 'studentperformance-dev-artifacts' in region 'us-east-1'
+[2025-06-19 15:35:28,160] - INFO - data_ingestion - ========== Starting Data Ingestion ==========
+[2025-06-19 15:35:28,160] - INFO - postgres_dbhandler - Loading data from PostgreSQL table: student_scores
+[2025-06-19 15:35:28,160] - INFO - postgres_dbhandler - Attempting to connect to PostgreSQL
+[2025-06-19 15:35:29,057] - INFO - postgres_dbhandler - Successfully connected to PostgreSQL
+[2025-06-19 15:35:29,057] - INFO - postgres_dbhandler - Executing query: SELECT * FROM "student_scores"
+[2025-06-19 15:35:29,794] - INFO - postgres_dbhandler - DataFrame loaded from PostgreSQL table: student_scores
+[2025-06-19 15:35:29,794] - INFO - data_ingestion - Fetched 2000 raw rows from data source.
+[2025-06-19 15:35:29,794] - INFO - postgres_dbhandler - PostgreSQL connection closed
+[2025-06-19 15:35:29,797] - INFO - data_ingestion - Raw DataFrame cleaned successfully.
+[2025-06-19 15:35:29,797] - INFO - data_ingestion - Streaming raw and ingested data to S3
+[2025-06-19 15:35:29,797] - INFO - s3_handler - S3Handler context entered
+[2025-06-19 15:35:30,605] - INFO - s3_handler - Streamed CSV to: s3://studentperformance-dev-artifacts/artifacts/2025_06_19T14_35_25Z/data_ingestion/raw_data/raw.csv
+[2025-06-19 15:35:30,920] - INFO - s3_handler - Streamed CSV to: s3://studentperformance-dev-artifacts/data/raw/raw.csv
+[2025-06-19 15:35:31,242] - INFO - s3_handler - Streamed CSV to: s3://studentperformance-dev-artifacts/artifacts/2025_06_19T14_35_25Z/data_ingestion/ingested_data/ingested_data.csv
+[2025-06-19 15:35:31,244] - INFO - s3_handler - S3Handler context exited
+[2025-06-19 15:35:31,246] - INFO - data_ingestion - ========== Data Ingestion Completed ==========
+[2025-06-19 15:35:31,246] - INFO - training_pipeline - Data Ingestion Artifact: 
+Data Ingestion Artifact:
+  - Raw Local Path:        'None'
+  - DVC Raw Local Path:    'None'
+  - Ingested Local Path:   'None'
+  - Raw S3 URI:            's3://studentperformance-dev-artifacts/artifacts/2025_06_19T14_35_25Z/data_ingestion/raw_data/raw.csv'
+  - DVC Raw S3 URI:        's3://studentperformance-dev-artifacts/data/raw/raw.csv'
+  - Ingested S3 URI:       's3://studentperformance-dev-artifacts/artifacts/2025_06_19T14_35_25Z/data_ingestion/ingested_data/ingested_data.csv'
+[2025-06-19 15:35:31,246] - INFO - data_validation - Initializing DataValidation component.
