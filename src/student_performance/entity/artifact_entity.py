@@ -145,6 +145,7 @@ class DataTransformationArtifact:
 class ModelTrainerArtifact:
     trained_model_filepath: Path | None = None
     training_report_filepath: Path | None = None
+    inference_model_filepath: str | None = None
 
     x_train_filepath: Path | None = None
     y_train_filepath: Path | None = None
@@ -155,6 +156,7 @@ class ModelTrainerArtifact:
 
     trained_model_s3_uri: str | None = None
     training_report_s3_uri: str | None = None
+    inference_model_s3_uri: str | None = None
 
     x_train_s3_uri: str | None = None
     y_train_s3_uri: str | None = None

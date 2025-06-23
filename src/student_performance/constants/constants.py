@@ -38,3 +38,5 @@ TRANSFORM_PROCESSOR_SUBDIR = "data_processor"
 MODEL_TRAINER_ROOT = "model_trainer"
 MODEL_MODEL_SUBDIR = "model"
 MODEL_REPORTS_SUBDIR = "reports"
+
+INFERENCE_MODEL_ROOT = "inference_model"

@@ -156,7 +156,7 @@ class DataTransformation:
         except Exception as e:
             logger.exception("Failed to save preprocessor pipelines.")
             raise StudentPerformanceError(e, logger) from e
-        
+
 
 
     def _save_arrays(
@@ -230,12 +230,12 @@ class DataTransformation:
             x_proc, y_proc = builder.build()
 
             X_train = x_proc.fit_transform(X_train)
-            X_val   = x_proc.transform(X_val)
-            X_test  = x_proc.transform(X_test)
+            X_val = x_proc.transform(X_val)
+            X_test = x_proc.transform(X_test)
 
             y_train = y_proc.fit_transform(y_train)
-            y_val   = y_proc.transform(y_val)
-            y_test  = y_proc.transform(y_test)
+            y_val = y_proc.transform(y_val)
+            y_test = y_proc.transform(y_test)
 
             # 2) Save preprocessors, collect locations
             prep_locs = self._save_preprocessors(x_proc, y_proc)

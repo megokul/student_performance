@@ -8,6 +8,7 @@ import json
 import numpy as np
 import pandas as pd
 import joblib
+from typing import Any
 
 from src.student_performance.logging import logger
 from src.student_performance.exception.exception import StudentPerformanceError
@@ -204,4 +205,29 @@ def load_array(path: Path, label: str) -> np.ndarray:
 
     except Exception as e:
         msg = f"Failed to load {label} from: '{path.as_posix()}'"
+        raise StudentPerformanceError(e, logger) from e
+
+@ensure_annotations
+def load_object(path: Path, label: str) -> Any:
+    """
+    Loads a serialized object from the specified path using joblib.
+
+    Args:
+        path (Path): The path to the serialized object.
+        label (str): Label used for logging context.
+
+    Returns:
+        Any: The deserialized object.
+    """
+    try:
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"{label} not found at: '{path.as_posix()}'")
+        obj = joblib.load(path)
+        logger.info(f"{label} loaded from: '{path.as_posix()}'")
+        return obj
+
+    except Exception as e:
+        msg = f"Failed to load {label} from: '{path.as_posix()}'"
+        logger.exception(msg)
         raise StudentPerformanceError(e, logger) from e

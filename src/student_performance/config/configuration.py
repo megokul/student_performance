@@ -23,6 +23,9 @@ from src.student_performance.constants.constants import (
     TRANSFORM_VAL_SUBDIR,
     TRANSFORM_PROCESSOR_SUBDIR,
     MODEL_TRAINER_ROOT,
+    MODEL_MODEL_SUBDIR,
+    MODEL_REPORTS_SUBDIR,
+    INFERENCE_MODEL_ROOT,
 )
 
 from pathlib import Path
@@ -233,17 +236,21 @@ class ConfigurationManager:
         data_backup_config = self.config.data_backup
 
         root_dir = self.artifacts_root / MODEL_TRAINER_ROOT
+        inference_model_filepath = Path(INFERENCE_MODEL_ROOT) / trainer_config.inference_model_filename
+        trained_model_filepath = root_dir / MODEL_MODEL_SUBDIR / trainer_config.trained_model_filename
+        training_report_filepath = root_dir / MODEL_REPORTS_SUBDIR / trainer_config.training_report_filename
 
         mlflow_cfg = trainer_params.tracking
         mlflow_cfg.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
 
         return ModelTrainerConfig(
             root_dir=root_dir,
-            trained_model_filepath=trainer_config.trained_model_filename,
-            training_report_filepath=trainer_config.training_report_filename,
+            trained_model_filepath=trained_model_filepath,
+            training_report_filepath=training_report_filepath,
             models=trainer_params.models,
             optimization=trainer_params.optimization,
             tracking=mlflow_cfg,
             local_enabled=data_backup_config.local_enabled,
             s3_enabled=data_backup_config.s3_enabled,
+            inference_model_filepath=inference_model_filepath,
         )

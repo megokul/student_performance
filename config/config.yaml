@@ -27,7 +27,9 @@ data_transformation:
 # Model trainer configuration
 model_trainer:
   model_dir: saved_models
+  inference_model_filename: inference_model.joblib
   trained_model_filename: model.joblib
+
   training_report_filename: training_report.yaml
 
 # PostGres configuration

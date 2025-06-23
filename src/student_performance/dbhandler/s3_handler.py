@@ -260,3 +260,33 @@ class S3Handler(DBHandler):
         except Exception as e:
             logger.exception("Failed to load .npy from S3.")
             raise StudentPerformanceError(e, logger) from e
+        
+    def load_object(self, s3_uri: str) -> object:
+        """
+        Load a joblib‐serialized object from S3 into memory.
+
+        Args:
+            s3_uri: The S3 URI where the object was stored (e.g. "s3://bucket/key.joblib").
+
+        Returns:
+            The deserialized Python object.
+        """
+        try:
+            # parse bucket & key
+            bucket, key = self._parse_s3_uri(s3_uri)
+
+            # fetch from S3
+            resp = self._client.get_object(Bucket=bucket, Key=key)
+            data = resp['Body'].read()
+
+            # load via joblib from an in‐memory buffer
+            buf = BytesIO(data)
+            buf.seek(0)
+            obj = joblib.load(buf)
+
+            logger.info("Loaded object from S3: %s", s3_uri)
+            return obj
+
+        except Exception as e:
+            logger.exception("Failed to load object from S3: %s", s3_uri)
+            raise StudentPerformanceError(e, logger) from e

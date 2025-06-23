@@ -15,8 +15,9 @@ from src.student_performance.entity.config_entity import ModelTrainerConfig
 from src.student_performance.entity.artifact_entity import ModelTrainerArtifact, DataTransformationArtifact
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
-from src.student_performance.utils.core import save_to_yaml, save_object, load_array
+from src.student_performance.utils.core import save_to_yaml, save_object, load_array, load_object
 from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.inference.estimator import StudentPerformanceModel
 
 
 class ModelTrainer:
@@ -59,6 +60,8 @@ class ModelTrainer:
                 self.y_train = load_array(self.transformation_artifact.y_train_filepath, "y_train")
                 self.X_val = load_array(self.transformation_artifact.x_val_filepath, "X_val")
                 self.y_val = load_array(self.transformation_artifact.y_val_filepath, "y_val")
+                self.x_preprocessor = load_object(self.transformation_artifact.x_preprocessor_filepath)
+                self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath)
 
             elif self.trainer_config.s3_enabled and self.backup_handler:
                 logger.info(f"Loading from S3:")
@@ -67,6 +70,8 @@ class ModelTrainer:
                     self.y_train = handler.load_npy(self.transformation_artifact.y_train_s3_uri)
                     self.X_val = handler.load_npy(self.transformation_artifact.x_val_s3_uri)
                     self.y_val = handler.load_npy(self.transformation_artifact.y_val_s3_uri)
+                    self.x_preprocessor = handler.load_object(self.transformation_artifact.x_preprocessor_s3_uri)
+                    self.y_preprocessor = handler.load_object(self.transformation_artifact.y_preprocessor_s3_uri)
 
         except Exception as e:
             logger.exception("Failed to load training data.")
@@ -154,45 +159,105 @@ class ModelTrainer:
         report: dict,
         inference_model,
     ) -> ModelTrainerArtifact:
-        try:
-            logger.info("Saving model and report artifacts locally")
-            # trained model
-            save_object(model, self.trainer_config.trained_model_filepath, "Trained Model")
-            # inference wrapper
-            save_object(inference_model, self.trainer_config.inference_model_filepath, "Inference Model")
-            # report
-            save_to_yaml(report, self.trainer_config.training_report_filepath, "Training Report")
+        """
+        Persist the trained model, inference wrapper, and report.
+        Saves locally if local_enabled, streams to S3 if s3_enabled.
+        Returns a ModelTrainerArtifact listing all paths and URIs.
+        """
+        # placeholders for what we actually write
+        trained_local = None
+        report_local = None
+        inference_local = None
 
-            # optional S3 backup
-            trained_s3 = report_s3 = inference_s3 = None
+        trained_s3 = None
+        report_s3 = None
+        inference_s3 = None
+
+        try:
+            # 1) Local saves
+            if self.trainer_config.local_enabled:
+                trained_local = self.trainer_config.trained_model_filepath
+                # trained model
+                save_object(
+                    model,
+                    trained_local,
+                    "Trained Model",
+                )
+
+                inference_local = self.trainer_config.inference_model_filepath
+                # inference wrapper
+                save_object(
+                    inference_model,
+                    inference_local,
+                    "Inference Model",
+                )
+
+                report_local = self.trainer_config.training_report_filepath
+                # YAML report
+                save_to_yaml(
+                    report,
+                    report_local,
+                    "Training Report",
+                )
+
+            # 2) S3 backups
             if self.trainer_config.s3_enabled and self.backup_handler:
                 logger.info("Streaming artifacts to S3")
-                trained_s3 = self.backup_handler.stream_file(
-                    self.trainer_config.trained_model_filepath.as_posix()
-                )
-                inference_s3 = self.backup_handler.stream_file(
-                    self.trainer_config.inference_model_filepath.as_posix()
-                )
-                report_s3 = self.backup_handler.stream_file(
-                    self.trainer_config.training_report_filepath.as_posix()
-                )
+                with self.backup_handler as handler:
+                    # model & wrapper as in-memory objects
+                    trained_s3 = handler.stream_object(
+                        model,
+                        self.trainer_config.trained_model_s3_key
+                    )
+                    inference_s3 = handler.stream_object(
+                        inference_model,
+                        self.trainer_config.inference_model_s3_key,
+                    )
+                    # report as file
+                    report_s3 = handler.stream_yaml(
+                        report,
+                        self.trainer_config.training_report_s3_key,
+                    )
 
+            # 3) build and return artifact
             return ModelTrainerArtifact(
-                trained_model_filepath=self.trainer_config.trained_model_filepath,
-                training_report_filepath=self.trainer_config.training_report_filepath,
+                trained_model_filepath=trained_local,
+                training_report_filepath=report_local,
+                inference_model_filepath=inference_local,
+                x_train_filepath=self.transformation_artifact.x_train_filepath
+                    if self.trainer_config.local_enabled else None,
+                y_train_filepath=self.transformation_artifact.y_train_filepath
+                    if self.trainer_config.local_enabled else None,
+                x_val_filepath=self.transformation_artifact.x_val_filepath
+                    if self.trainer_config.local_enabled else None,
+                y_val_filepath=self.transformation_artifact.y_val_filepath
+                    if self.trainer_config.local_enabled else None,
+                x_test_filepath=self.transformation_artifact.x_test_filepath
+                    if self.trainer_config.local_enabled else None,
+                y_test_filepath=self.transformation_artifact.y_test_filepath
+                    if self.trainer_config.local_enabled else None,
+
                 trained_model_s3_uri=trained_s3,
+                training_report_s3_uri=report_s3,
                 inference_model_s3_uri=inference_s3,
-                report_s3_uri=report_s3,
-                x_train_filepath=self.transformation_artifact.x_train_filepath,
-                y_train_filepath=self.transformation_artifact.y_train_filepath,
-                x_val_filepath=self.transformation_artifact.x_val_filepath,
-                y_val_filepath=self.transformation_artifact.y_val_filepath,
-                x_test_filepath=self.transformation_artifact.x_test_filepath,
-                y_test_filepath=self.transformation_artifact.y_test_filepath,
+                x_train_s3_uri=self.transformation_artifact.x_train_s3_uri
+                    if self.trainer_config.s3_enabled else None,
+                y_train_s3_uri=self.transformation_artifact.y_train_s3_uri
+                    if self.trainer_config.s3_enabled else None,
+                x_val_s3_uri=self.transformation_artifact.x_val_s3_uri
+                    if self.trainer_config.s3_enabled else None,
+                y_val_s3_uri=self.transformation_artifact.y_val_s3_uri
+                    if self.trainer_config.s3_enabled else None,
+                x_test_s3_uri=self.transformation_artifact.x_test_s3_uri
+                    if self.trainer_config.s3_enabled else None,
+                y_test_s3_uri=self.transformation_artifact.y_test_s3_uri
+                    if self.trainer_config.s3_enabled else None,
             )
+
         except Exception as e:
             logger.exception("Failed to save artifacts.")
             raise StudentPerformanceError(e, logger) from e
+
 
     def run_training(self) -> ModelTrainerArtifact:
         try:
@@ -211,11 +276,10 @@ class ModelTrainer:
                 for k, v in val_m.items():
                     mlflow.log_metric(f"val_{k}", v)
 
-                # build inference wrapper
-                inference_model = self.trainer_config.inference_model_class.from_objects(
+                inference_model = StudentPerformanceModel.from_objects(
                     model=model,
-                    x_preprocessor=joblib.load(self.transformation_artifact.x_preprocessor_filepath),
-                    y_preprocessor=joblib.load(self.transformation_artifact.y_preprocessor_filepath),
+                    x_preprocessor=self.x_preprocessor,
+                    y_preprocessor=self.y_preprocessor,
                 )
 
                 report = {

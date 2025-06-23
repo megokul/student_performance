@@ -296,6 +296,7 @@ class ModelTrainerConfig:
     root_dir: Path
     trained_model_filepath: Path
     training_report_filepath: Path
+    inference_model_filepath: Path
 
     local_enabled: bool
     s3_enabled: bool
@@ -316,6 +317,10 @@ class ModelTrainerConfig:
     @property
     def training_report_s3_key(self) -> str:
         return self.training_report_filepath.as_posix()
+
+    @property
+    def inference_model_s3_key(self) -> str:
+        return self.inference_model_filepath.as_posix()
 
     def __repr__(self) -> str:
         parts = [
