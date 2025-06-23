@@ -34,18 +34,24 @@ class DataIngestionArtifact:
 @dataclass(frozen=True)
 class DataValidationArtifact:
     validated_filepath: Path | None = None
-    validated_s3_uri: str | None = None
+    validated_dvc:     Path | None = None
+    validated_s3_uri:  str  | None = None
+    validated_dvc_s3_uri: str | None = None
     validation_status: bool = False
 
     def __repr__(self) -> str:
-        validated_local = self.validated_filepath.as_posix() if self.validated_filepath else "None"
-        validated_s3 = self.validated_s3_uri if self.validated_s3_uri else "None"
+        local = self.validated_filepath.as_posix() if self.validated_filepath else "None"
+        dvc_local = self.validated_dvc.as_posix() if self.validated_dvc else "None"
+        s3 = self.validated_s3_uri if self.validated_s3_uri else "None"
+        dvc_s3 = self.validated_dvc_s3_uri if self.validated_dvc_s3_uri else "None"
 
         return (
             "\nData Validation Artifact:\n"
-            f"  - Validated Local Path: '{validated_local}'\n"
-            f"  - Validated S3 URI:     '{validated_s3}'\n"
-            f"  - Validation Status:    '{self.validation_status}'"
+            f"  - Validated Local Path:     '{local}'\n"
+            f"  - Validated DVC Local Path: '{dvc_local}'\n"
+            f"  - Validated S3 URI:         '{s3}'\n"
+            f"  - Validated DVC S3 URI:     '{dvc_s3}'\n"
+            f"  - Validation Status:        {self.validation_status}"
         )
 
 

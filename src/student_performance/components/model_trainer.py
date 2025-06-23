@@ -60,8 +60,8 @@ class ModelTrainer:
                 self.y_train = load_array(self.transformation_artifact.y_train_filepath, "y_train")
                 self.X_val = load_array(self.transformation_artifact.x_val_filepath, "X_val")
                 self.y_val = load_array(self.transformation_artifact.y_val_filepath, "y_val")
-                self.x_preprocessor = load_object(self.transformation_artifact.x_preprocessor_filepath)
-                self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath)
+                self.x_preprocessor = load_object(self.transformation_artifact.x_preprocessor_filepath, "X_Processor")
+                self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath, "y_Processor")
 
             elif self.trainer_config.s3_enabled and self.backup_handler:
                 logger.info(f"Loading from S3:")
@@ -181,15 +181,17 @@ class ModelTrainer:
                 save_object(
                     model,
                     trained_local,
-                    "Trained Model",
+                    label="Trained Model",
                 )
 
                 inference_local = self.trainer_config.inference_model_filepath
+                inference_serving = self.trainer_config.inference_model_serving_filepath
                 # inference wrapper
                 save_object(
                     inference_model,
                     inference_local,
-                    "Inference Model",
+                    inference_serving,
+                    label="Inference Model",
                 )
 
                 report_local = self.trainer_config.training_report_filepath
@@ -197,7 +199,7 @@ class ModelTrainer:
                 save_to_yaml(
                     report,
                     report_local,
-                    "Training Report",
+                    label="Training Report",
                 )
 
             # 2) S3 backups

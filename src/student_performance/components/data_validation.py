@@ -1,8 +1,9 @@
 import hashlib
+from pathlib import Path
+
 import pandas as pd
 from box import ConfigBox
 from scipy.stats import ks_2samp
-from pathlib import Path
 
 from src.student_performance.entity.config_entity import DataValidationConfig
 from src.student_performance.entity.artifact_entity import (
@@ -57,14 +58,21 @@ class DataValidation:
         ingestion_artifact: DataIngestionArtifact,
     ) -> pd.DataFrame:
         try:
-            if ingestion_artifact.ingested_filepath:
+            if (
+                self.validation_config.local_enabled
+                and ingestion_artifact.ingested_filepath
+            ):
                 logger.info(
                     f"Loading ingested data from local: "
-                    f"{ingestion_artifact.ingested_filepath}",
+                    f"{ingestion_artifact.ingested_filepath}"
                 )
                 return read_csv(ingestion_artifact.ingested_filepath)
 
-            elif ingestion_artifact.ingested_s3_uri and self.backup_handler:
+            if (
+                self.validation_config.s3_enabled
+                and ingestion_artifact.ingested_s3_uri
+                and self.backup_handler
+            ):
                 logger.info(
                     f"Loading ingested data from S3: "
                     f"{ingestion_artifact.ingested_s3_uri}"
@@ -132,14 +140,14 @@ class DataValidation:
             missing = self.df.isnull().sum().to_dict()
             missing["timestamp"] = self.timestamp
 
-            missing_report_filepath = self.validation_config.missing_report_filepath
-            if self.validation_config.local_enabled:
-                save_to_yaml(missing, missing_report_filepath, label="Missing Value Report")
+            missing_path = self.validation_config.missing_report_filepath
+            missing_key = self.validation_config.missing_report_s3_key
 
+            if self.validation_config.local_enabled:
+                save_to_yaml(missing, missing_path, label="Missing Value Report")
             if self.validation_config.s3_enabled and self.backup_handler:
-                missing_report_s3_key = self.validation_config.missing_report_s3_key
                 with self.backup_handler as handler:
-                    handler.stream_yaml(missing, missing_report_s3_key)
+                    handler.stream_yaml(missing, missing_key)
 
             self.non_critical_checks.no_missing_values = not any(
                 v > 0 for v in missing.values() if isinstance(v, (int, float))
@@ -157,14 +165,14 @@ class DataValidation:
             removed = before - len(self.df)
 
             report = {"duplicate_rows_removed": removed, "timestamp": self.timestamp}
+            dup_path = self.validation_config.duplicates_report_filepath
+            dup_key = self.validation_config.duplicates_report_s3_key
 
             if self.validation_config.local_enabled:
-                duplicates_report_filepath = self.validation_config.duplicates_report_filepath
-                save_to_yaml(report, duplicates_report_filepath, label="Duplicates Report")
+                save_to_yaml(report, dup_path, label="Duplicates Report")
             if self.validation_config.s3_enabled and self.backup_handler:
-                duplicates_report_s3_key = self.validation_config.duplicates_report_s3_key
                 with self.backup_handler as handler:
-                    handler.stream_yaml(report, duplicates_report_s3_key)
+                    handler.stream_yaml(report, dup_key)
 
             self.non_critical_checks.no_duplicate_rows = (removed == 0)
         except Exception as e:
@@ -194,14 +202,14 @@ class DataValidation:
                 "details": violations,
                 "timestamp": self.timestamp,
             }
+            cat_path = self.validation_config.categorical_report_filepath
+            cat_key = self.validation_config.categorical_report_s3_key
 
             if self.validation_config.local_enabled:
-                categorical_report_filepath = self.validation_config.categorical_report_filepath
-                save_to_yaml(report, categorical_report_filepath, label="Categorical Values Report")
+                save_to_yaml(report, cat_path, label="Categorical Values Report")
             if self.validation_config.s3_enabled and self.backup_handler:
-                categorical_report_s3_key = self.validation_config.categorical_report_s3_key
                 with self.backup_handler as handler:
-                    handler.stream_yaml(report, categorical_report_s3_key)
+                    handler.stream_yaml(report, cat_key)
 
             self.non_critical_checks.categorical_values_match = not bool(violations)
         except Exception as e:
@@ -234,20 +242,21 @@ class DataValidation:
                 report["reason"] = "Base dataset not found, skipping drift."
                 self.critical_checks.no_data_drift = True
 
+            drift_path = self.validation_config.drift_report_filepath
+            drift_key = self.validation_config.drift_report_s3_key
+
             if self.validation_config.local_enabled:
-                drift_report_filepath = self.validation_config.drift_report_filepath
-                save_to_yaml(report, drift_report_filepath, label="Drift Report")
+                save_to_yaml(report, drift_path, label="Drift Report")
             if self.validation_config.s3_enabled and self.backup_handler:
-                drift_report_s3_key = self.validation_config.drift_report_s3_key
                 with self.backup_handler as handler:
-                    handler.stream_yaml(report, drift_report_s3_key)
+                    handler.stream_yaml(report, drift_key)
 
         except Exception as e:
             logger.exception("Data drift check failed.")
             self.critical_checks.no_data_drift = False
             raise StudentPerformanceError(e, logger) from e
 
-    def __generate_report(self) -> dict:
+    def __generate_report(self) -> None:
         try:
             logger.info("Generating final validation report.")
             self.report.timestamp = self.timestamp
@@ -261,19 +270,44 @@ class DataValidation:
             self.report.check_results.critical_checks = self.critical_checks.to_dict()
             self.report.check_results.non_critical_checks = self.non_critical_checks.to_dict()
 
+            report_path = self.validation_config.validation_report_filepath
+            report_key = self.validation_config.validation_report_s3_key
+
             if self.validation_config.local_enabled:
-                validation_report_filepath = self.validation_config.validation_report_filepath
-                save_to_yaml(self.report, validation_report_filepath, label="Validation Report")
+                save_to_yaml(self.report.to_dict(), report_path, label="Validation Report")
             if self.validation_config.s3_enabled and self.backup_handler:
-                validation_report_s3_key = self.validation_config.validation_report_s3_key
                 with self.backup_handler as handler:
-                    handler.stream_yaml(
-                        self.report,
-                        validation_report_s3_key,
-                    )
+                    handler.stream_yaml(self.report.to_dict(), report_key)
+
         except Exception as e:
             logger.exception("Failed to generate validation report.")
             raise StudentPerformanceError(e, logger) from e
+
+    def __save_artifacts(self) -> ConfigBox:
+        validated_local = self.validation_config.validated_filepath
+        validated_dvc = self.validation_config.dvc_validated_filepath
+        validated_s3: str | None = None
+        validated_dvc_s3: str | None = None
+
+        if self.validation_config.local_enabled:
+            save_to_csv(
+                self.df,
+                validated_local,
+                validated_dvc,
+                label="Validated Data",
+            )
+
+        if self.validation_config.s3_enabled and self.backup_handler:
+            key = self.validation_config.validated_s3_key
+            dvc_key = self.validation_config.dvc_validated_s3_key
+            with self.backup_handler as handler:
+                validated_s3 = handler.stream_csv(self.df, key)
+                validated_dvc_s3 = handler.stream_csv(self.df, dvc_key)
+
+        return ConfigBox({
+            "Validated": {"local": validated_local, "s3": validated_s3},
+            "Validated_DVC": {"local": validated_dvc, "s3": validated_dvc_s3},
+        })
 
     def run_validation(self) -> DataValidationArtifact:
         try:
@@ -294,30 +328,16 @@ class DataValidation:
             self.__generate_report()
 
             passed = all(self.critical_checks.values())
-            validated_local = None
-            validated_s3_uri = None
-
+            saved_paths = None
             if passed:
-                if self.validation_config.local_enabled:
-                    save_to_csv(
-                        self.df,
-                        self.validation_config.validated_filepath,
-                        label="Validated Data",
-                    )
-                    validated_local = self.validation_config.validated_filepath
-
-                if self.validation_config.s3_enabled and self.backup_handler:
-                    validated_s3_key = self.validation_config.validated_s3_key
-                    with self.backup_handler as handler:
-                        validated_s3_uri = handler.stream_csv(
-                            self.df,
-                            validated_s3_key,
-                        )
+                saved_paths = self.__save_artifacts()
 
             logger.info("========== Data Validation Completed ==========")
             return DataValidationArtifact(
-                validated_filepath=validated_local,
-                validated_s3_uri=validated_s3_uri,
+                validated_filepath=saved_paths.Validated.local if saved_paths else None,
+                validated_s3_uri=saved_paths.Validated.s3 if saved_paths else None,
+                validated_dvc=saved_paths.Validated_DVC.local if saved_paths else None,
+                validated_dvc_s3_uri=saved_paths.Validated_DVC.s3 if saved_paths else None,
                 validation_status=passed,
             )
 

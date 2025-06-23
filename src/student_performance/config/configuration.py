@@ -22,10 +22,11 @@ from src.student_performance.constants.constants import (
     TRANSFORM_TEST_SUBDIR,
     TRANSFORM_VAL_SUBDIR,
     TRANSFORM_PROCESSOR_SUBDIR,
-    MODEL_TRAINER_ROOT,
-    MODEL_MODEL_SUBDIR,
-    MODEL_REPORTS_SUBDIR,
+    TRAINER_ROOT,
+    TRAINER_MODEL_SUBDIR,
+    TRAINER_REPORTS_SUBDIR,
     INFERENCE_MODEL_ROOT,
+    TRAINER_INFERENCE_SUBDIR,
 )
 
 from pathlib import Path
@@ -93,11 +94,10 @@ class ConfigurationManager:
 
         return S3HandlerConfig(
             root_dir=root_dir,
-            bucket_name=s3_config.final_model_s3_bucket,
+            bucket_name=s3_config.s3_bucket,
             aws_region=aws_region,
             local_dir_to_sync=self.artifacts_root,  # assuming you want to sync entire artifacts dir
             s3_artifacts_prefix=s3_config.s3_artifacts_prefix,
-            s3_final_model_prefix=s3_config.s3_final_model_prefix,
         )
 
     def _build_s3_key(self, prefix: str, path: Path, relative_to: Path) -> str:
@@ -235,10 +235,11 @@ class ConfigurationManager:
         trainer_params = self.params.model_trainer
         data_backup_config = self.config.data_backup
 
-        root_dir = self.artifacts_root / MODEL_TRAINER_ROOT
+        root_dir = self.artifacts_root / TRAINER_ROOT
         inference_model_filepath = Path(INFERENCE_MODEL_ROOT) / trainer_config.inference_model_filename
-        trained_model_filepath = root_dir / MODEL_MODEL_SUBDIR / trainer_config.trained_model_filename
-        training_report_filepath = root_dir / MODEL_REPORTS_SUBDIR / trainer_config.training_report_filename
+        inference_model_serving_filepath = root_dir / TRAINER_INFERENCE_SUBDIR / trainer_config.inference_model_filename
+        trained_model_filepath = root_dir / TRAINER_MODEL_SUBDIR / trainer_config.trained_model_filename
+        training_report_filepath = root_dir / TRAINER_REPORTS_SUBDIR / trainer_config.training_report_filename
 
         mlflow_cfg = trainer_params.tracking
         mlflow_cfg.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
@@ -253,4 +254,5 @@ class ConfigurationManager:
             local_enabled=data_backup_config.local_enabled,
             s3_enabled=data_backup_config.s3_enabled,
             inference_model_filepath=inference_model_filepath,
+            inference_model_serving_filepath=inference_model_serving_filepath,
         )

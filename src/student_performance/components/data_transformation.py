@@ -184,10 +184,10 @@ class DataTransformation:
                 to_save = [
                     ("X_train", X_train, self.transformation_config.x_train_filepath, self.transformation_config.x_train_dvc_filepath, X_TRAIN_LABEL),
                     ("y_train", y_train, self.transformation_config.y_train_filepath, self.transformation_config.y_train_dvc_filepath, Y_TRAIN_LABEL),
-                    ("X_val", X_val, self.transformation_config.x_val_filepath,   self.transformation_config.x_val_dvc_filepath,   X_VAL_LABEL),
-                    ("y_val", y_val, self.transformation_config.y_val_filepath,   self.transformation_config.y_val_dvc_filepath,   Y_VAL_LABEL),
-                    ("X_test", X_test, self.transformation_config.x_test_filepath,  self.transformation_config.x_test_dvc_filepath,  X_TEST_LABEL),
-                    ("y_test", y_test, self.transformation_config.y_test_filepath,  self.transformation_config.y_test_dvc_filepath,  Y_TEST_LABEL),
+                    ("X_val", X_val, self.transformation_config.x_val_filepath, self.transformation_config.x_val_dvc_filepath, X_VAL_LABEL),
+                    ("y_val", y_val, self.transformation_config.y_val_filepath, self.transformation_config.y_val_dvc_filepath, Y_VAL_LABEL),
+                    ("X_test", X_test, self.transformation_config.x_test_filepath, self.transformation_config.x_test_dvc_filepath, X_TEST_LABEL),
+                    ("y_test", y_test, self.transformation_config.y_test_filepath, self.transformation_config.y_test_dvc_filepath, Y_TEST_LABEL),
                 ]
                 for key, array, local_path, dvc_path, label in to_save:
                     save_array(array, local_path, dvc_path, label=label)
@@ -202,6 +202,12 @@ class DataTransformation:
                     ("y_val", y_val, self.transformation_config.y_val_s3_key),
                     ("X_test", X_test, self.transformation_config.x_test_s3_key),
                     ("y_test", y_test, self.transformation_config.y_test_s3_key),
+                    ("X_train", X_train, self.transformation_config.x_train_dvc_s3_key),
+                    ("y_train", y_train, self.transformation_config.y_train_dvc_s3_key),
+                    ("X_val", X_val, self.transformation_config.x_val_dvc_s3_key),
+                    ("y_val", y_val, self.transformation_config.y_val_dvc_s3_key),
+                    ("X_test", X_test, self.transformation_config.x_test_dvc_s3_key),
+                    ("y_test", y_test, self.transformation_config.y_test_dvc_s3_key),
                 ]
                 with self.backup_handler as handler:
                     for key, array, s3_key in to_stream:
@@ -239,10 +245,6 @@ class DataTransformation:
 
             # 2) Save preprocessors, collect locations
             prep_locs = self._save_preprocessors(x_proc, y_proc)
-            # prep_locs = ConfigBox({
-            #   "x_preprocessor": {"local": Path|None, "s3": str|None},
-            #   "y_preprocessor": {"local": Path|None, "s3": str|None}
-            # })
 
             # 3) Save arrays, collect locations
             array_locs = self._save_arrays(

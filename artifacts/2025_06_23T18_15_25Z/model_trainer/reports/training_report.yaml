@@ -1,0 +1,20 @@
+timestamp: '2025-06-23T18:17:12.329334+00:00'
+best_model: RandomForestRegressor
+best_params:
+  n_estimators: 50
+  max_depth: 47
+train_metrics:
+  neg_root_mean_squared_error: -0.37650067042647223
+  r2: 0.8582472451684169
+  neg_mean_absolute_error: -0.3036298613245575
+  neg_mean_squared_error: -0.14175275483158306
+val_metrics:
+  neg_root_mean_squared_error: -0.9424687936790526
+  r2: 0.047892917585280914
+  neg_mean_absolute_error: -0.7462416820540909
+  neg_mean_squared_error: -0.8882474270588486
+optimization:
+  enabled: true
+  best_score: -0.9969893831692952
+  direction: minimize
+  cv_folds: 5

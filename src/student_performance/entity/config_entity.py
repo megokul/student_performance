@@ -41,7 +41,6 @@ class S3HandlerConfig:
     aws_region: str
     local_dir_to_sync: Path
     s3_artifacts_prefix: str
-    s3_final_model_prefix: str
 
     def __post_init__(self) -> None:
         self.root_dir = Path(self.root_dir)
@@ -55,7 +54,6 @@ class S3HandlerConfig:
             f"  - AWS Region:            {self.aws_region}",
             f"  - Local Dir to Sync:     {self.local_dir_to_sync}",
             f"  - S3 Artifacts Prefix:   {self.s3_artifacts_prefix}",
-            f"  - S3 Final Model Prefix: {self.s3_final_model_prefix}",
         )
 
 
@@ -191,15 +189,12 @@ class DataValidationConfig:
 class DataTransformationConfig:
     root_dir: Path
 
-    # save/backup toggles
     local_enabled: bool
     s3_enabled: bool
 
-    # target and params
     target_column: str
     transformation_params: ConfigBox
 
-    # filepaths
     x_train_filepath: Path
     y_train_filepath: Path
     x_val_filepath: Path
@@ -220,13 +215,20 @@ class DataTransformationConfig:
     def __post_init__(self) -> None:
         self.root_dir = Path(self.root_dir)
         for attr in (
-            "x_train_filepath", "y_train_filepath",
-            "x_val_filepath",   "y_val_filepath",
-            "x_test_filepath",  "y_test_filepath",
-            "x_train_dvc_filepath", "y_train_dvc_filepath",
-            "x_val_dvc_filepath",   "y_val_dvc_filepath",
-            "x_test_dvc_filepath",  "y_test_dvc_filepath",
-            "x_preprocessor_filepath", "y_preprocessor_filepath",
+            "x_train_filepath",
+            "y_train_filepath",
+            "x_val_filepath",
+            "y_val_filepath",
+            "x_test_filepath",
+            "y_test_filepath",
+            "x_train_dvc_filepath",
+            "y_train_dvc_filepath",
+            "x_val_dvc_filepath",
+            "y_val_dvc_filepath",
+            "x_test_dvc_filepath",
+            "y_test_dvc_filepath",
+            "x_preprocessor_filepath",
+            "y_preprocessor_filepath",
         ):
             setattr(self, attr, Path(getattr(self, attr)))
 
@@ -253,6 +255,30 @@ class DataTransformationConfig:
     @property
     def y_test_s3_key(self) -> str:
         return self.y_test_filepath.as_posix()
+
+    @property
+    def x_train_dvc_s3_key(self) -> str:
+        return self.x_train_dvc_filepath.as_posix()
+
+    @property
+    def y_train_dvc_s3_key(self) -> str:
+        return self.y_train_dvc_filepath.as_posix()
+
+    @property
+    def x_val_dvc_s3_key(self) -> str:
+        return self.x_val_dvc_filepath.as_posix()
+
+    @property
+    def y_val_dvc_s3_key(self) -> str:
+        return self.y_val_dvc_filepath.as_posix()
+
+    @property
+    def x_test_dvc_s3_key(self) -> str:
+        return self.x_test_dvc_filepath.as_posix()
+
+    @property
+    def y_test_dvc_s3_key(self) -> str:
+        return self.y_test_dvc_filepath.as_posix()
 
     @property
     def x_preprocessor_s3_key(self) -> str:
@@ -283,6 +309,12 @@ class DataTransformationConfig:
             f"  - Y Val S3 Key:              {self.y_val_s3_key}",
             f"  - X Test S3 Key:             {self.x_test_s3_key}",
             f"  - Y Test S3 Key:             {self.y_test_s3_key}",
+            f"  - X Train DVC S3 Key:        {self.x_train_dvc_s3_key}",
+            f"  - Y Train DVC S3 Key:        {self.y_train_dvc_s3_key}",
+            f"  - X Val DVC S3 Key:          {self.x_val_dvc_s3_key}",
+            f"  - Y Val DVC S3 Key:          {self.y_val_dvc_s3_key}",
+            f"  - X Test DVC S3 Key:         {self.x_test_dvc_s3_key}",
+            f"  - Y Test DVC S3 Key:         {self.y_test_dvc_s3_key}",
             f"  - X Preprocessor S3 Key:     {self.x_preprocessor_s3_key}",
             f"  - Y Preprocessor S3 Key:     {self.y_preprocessor_s3_key}",
             f"  - Transformation Params:     (hidden)",
@@ -297,6 +329,7 @@ class ModelTrainerConfig:
     trained_model_filepath: Path
     training_report_filepath: Path
     inference_model_filepath: Path
+    inference_model_serving_filepath: Path
 
     local_enabled: bool
     s3_enabled: bool
@@ -337,6 +370,3 @@ class ModelTrainerConfig:
             f"  - Tracking:                  (hidden)",
         ]
         return "\n".join(parts)
-
-
-

@@ -8,7 +8,6 @@ import json
 import numpy as np
 import pandas as pd
 import joblib
-from typing import Any
 
 from src.student_performance.logging import logger
 from src.student_performance.exception.exception import StudentPerformanceError
@@ -126,7 +125,7 @@ def save_to_json(data: dict, *paths: Path, label: str):
 
 
 @ensure_annotations
-def save_object(obj: object, path: Path, label: str):
+def save_object(obj: object, *paths: Path, label: str):
     """
     Saves a serializable object using joblib to the specified path.
 
@@ -136,15 +135,16 @@ def save_object(obj: object, path: Path, label: str):
         label (str): Label used for logging context.
     """
     try:
-        path = Path(path)
-        if not path.parent.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
-        else:
-            logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
+        for path in paths:
+            path = Path(path)
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory for {label}: '{path.parent.as_posix()}'")
+            else:
+                logger.info(f"Directory already exists for {label}: '{path.parent.as_posix()}'")
 
-        joblib.dump(obj, path)
-        logger.info(f"{label} saved to: '{path.as_posix()}'")
+            joblib.dump(obj, path)
+            logger.info(f"{label} saved to: '{path.as_posix()}'")
 
     except Exception as e:
         msg = f"Failed to save {label} to: '{path.as_posix()}'"
@@ -208,7 +208,7 @@ def load_array(path: Path, label: str) -> np.ndarray:
         raise StudentPerformanceError(e, logger) from e
 
 @ensure_annotations
-def load_object(path: Path, label: str) -> Any:
+def load_object(path: Path, label: str):
     """
     Loads a serialized object from the specified path using joblib.
 

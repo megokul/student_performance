@@ -4,7 +4,9 @@ from io import BytesIO
 from pathlib import Path
 
 import boto3
-import yaml
+
+from box import ConfigBox
+from yaml import safe_load
 
 from src.student_performance.constants.constants import (
     CONFIG_ROOT,
@@ -14,11 +16,10 @@ from src.student_performance.constants.constants import (
 from src.student_performance.utils.timestamp import get_utc_timestamp
 
 
-class S3LogHandler(logging.Handler):
+class LogHandler(logging.Handler):
     """
-    A logging.Handler that buffers all log lines in memory
-    and, on each emit, PUTs the full buffer to S3 so that
-    the object is always up-to-date. No local file is ever written.
+    Buffers all log lines in memory and, on each emit, PUTs the full buffer
+    to S3 so that the object is always up-to-date. No local file is ever written.
     """
     def __init__(self, bucket: str, key: str, level: int = logging.NOTSET) -> None:
         super().__init__(level)
@@ -34,76 +35,85 @@ class S3LogHandler(logging.Handler):
         try:
             line = self.format(record) + "\n"
             self.buffer.write(line.encode("utf-8"))
+            # rewind to beginning before upload
             self.buffer.seek(0)
             self.s3.put_object(
                 Bucket=self.bucket,
                 Key=self.key,
                 Body=self.buffer.getvalue()
             )
+            # move buffer pointer to end for next write
             self.buffer.seek(0, 2)
         except Exception:
             self.handleError(record)
 
+def read_yaml(path_to_yaml: Path) -> ConfigBox:
+    """
+    Load a YAML file and return its contents as a ConfigBox for dot-access.
+
+    Raises:
+        StudentPerformanceError: If the file is missing, corrupted, or unreadable.
+    """
+    
+    return ConfigBox(content)
+
 
 def setup_logger(name: str = "app_logger", level: int = logging.DEBUG) -> logging.Logger:
     """
-    - If data_backup.local_enabled=False and data_backup.s3_enabled=True
-      → attach only S3LogHandler (no local file).
-    - Otherwise → write locally under LOGS_ROOT/<ts>/<ts>.log.
-    Always leaves a console handler for stdout.
+    Configure and return a logger that:
+      - Always writes to stdout.
+      - If local_enabled: writes to LOGS_ROOT/<ts>/<ts>.log on disk.
+      - If s3_enabled: streams to S3 under s3://<bucket>/logs/<ts>/<ts>.log.
+      - If both flags are True, does both.
     """
+    # ensure UTF-8 on console
     sys.stdout.reconfigure(encoding="utf-8")
     timestamp = get_utc_timestamp()
 
-    # load config.yaml directly
-    config_root = Path(CONFIG_ROOT)
-    config_filepath = config_root / CONFIG_FILENAME
-    with open(config_filepath, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    # load YAML as ConfigBox
+    config_path = Path(CONFIG_ROOT) / CONFIG_FILENAME
+    with config_path.open("r", encoding="utf-8") as file:
+        config = ConfigBox(safe_load(file))
 
-    data_backup = config.get("data_backup", {})
-    local_enabled = bool(data_backup.get("local_enabled"))
-    s3_enabled = bool(data_backup.get("s3_enabled"))
-    log_prefix = data_backup.get("s3_log_prefix", "").rstrip("/")
-
-    s3_handler_cfg = config.get("s3_handler", {})
-    bucket = s3_handler_cfg.get("final_model_s3_bucket")
-
-    log_key = f"{LOGS_ROOT}/{timestamp}/{timestamp}.log"
-    full_s3_key = f"{log_prefix}/{log_key}" if log_prefix else log_key
+    # flags
+    local_enabled = config.data_backup.local_enabled
+    s3_enabled = config.data_backup.s3_enabled
+    bucket = config.s3_handler.s3_bucket
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # console handler
+    # 1) Console handler (always)
     if not any(isinstance(h, logging.StreamHandler) and h.stream is sys.stdout
                for h in logger.handlers):
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(level)
-        console_handler.setFormatter(logging.Formatter(
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(level)
+        ch.setFormatter(logging.Formatter(
             "[%(asctime)s] - %(levelname)s - %(module)s - %(message)s"
         ))
-        logger.addHandler(console_handler)
+        logger.addHandler(ch)
 
-    # only S3
-    if not local_enabled and s3_enabled and bucket:
-        if not any(isinstance(h, S3LogHandler) for h in logger.handlers):
-            s3_handler = S3LogHandler(bucket, full_s3_key, level=level)
-            logger.addHandler(s3_handler)
-
-    # local file + console
-    else:
+    # 2) Local file handler
+    if local_enabled:
         log_dir = Path(LOGS_ROOT) / timestamp
         log_dir.mkdir(parents=True, exist_ok=True)
         log_filepath = log_dir / f"{timestamp}.log"
 
-        if not any(isinstance(h, logging.FileHandler) and h.baseFilename == str(log_filepath)
+        if not any(isinstance(h, logging.FileHandler)
+                   and h.baseFilename == str(log_filepath)
                    for h in logger.handlers):
-            file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
-            file_handler.setLevel(level)
-            file_handler.setFormatter(logging.Formatter(
+            fh = logging.FileHandler(log_filepath, encoding="utf-8")
+            fh.setLevel(level)
+            fh.setFormatter(logging.Formatter(
                 "[%(asctime)s] - %(levelname)s - %(module)s - %(message)s"
             ))
-            logger.addHandler(file_handler)
+            logger.addHandler(fh)
+
+    # 3) S3 handler
+    if s3_enabled and bucket:
+        log_s3_key = f"{LOGS_ROOT}/{timestamp}/{timestamp}.log"
+        if not any(isinstance(h, LogHandler) for h in logger.handlers):
+            s3h = LogHandler(bucket=bucket, key=log_s3_key, level=level)
+            logger.addHandler(s3h)
 
     return logger

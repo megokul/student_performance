@@ -40,13 +40,11 @@ postgres_dbhandler:
   table_name: student_scores
 
 s3_handler:
-  final_model_s3_bucket: studentperformance-dev-artifacts
-  s3_final_model_prefix: final_inference_model
+  s3_bucket: studentperformance-dev-artifacts
+  s3_inference_model_prefix: inference_model
   s3_artifacts_prefix: artifacts
-  s3_log_prefix: logs
   
 data_backup:
   s3_enabled: true
   local_enabled: false
-  s3_artifacts_prefix: artifacts
 

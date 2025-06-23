@@ -1,0 +1,6 @@
+[2025-06-23 19:10:13,810] - INFO - training_pipeline - Initializing TrainingPipeline...
+[2025-06-23 19:10:14,438] - INFO - core - YAML successfully loaded from: 'config/config.yaml'
+[2025-06-23 19:10:14,716] - INFO - core - YAML successfully loaded from: 'config/params.yaml'
+[2025-06-23 19:10:14,998] - INFO - core - YAML successfully loaded from: 'config/schema.yaml'
+[2025-06-23 19:10:15,264] - INFO - core - YAML successfully loaded from: 'config/templates.yaml'
+[2025-06-23 19:10:15,539] - INFO - training_pipeline - ========== Training Pipeline Started ==========

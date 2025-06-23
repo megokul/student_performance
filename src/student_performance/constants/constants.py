@@ -35,8 +35,9 @@ TRANSFORM_TEST_SUBDIR = "test"
 TRANSFORM_VAL_SUBDIR = "val"
 TRANSFORM_PROCESSOR_SUBDIR = "data_processor"
 
-MODEL_TRAINER_ROOT = "model_trainer"
-MODEL_MODEL_SUBDIR = "model"
-MODEL_REPORTS_SUBDIR = "reports"
+TRAINER_ROOT = "model_trainer"
+TRAINER_MODEL_SUBDIR = "model"
+TRAINER_REPORTS_SUBDIR = "reports"
+TRAINER_INFERENCE_SUBDIR = "inference_model"
 
 INFERENCE_MODEL_ROOT = "inference_model"
