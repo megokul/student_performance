@@ -27,6 +27,9 @@ from src.student_performance.constants.constants import (
     TRAINER_REPORTS_SUBDIR,
     INFERENCE_MODEL_ROOT,
     TRAINER_INFERENCE_SUBDIR,
+    EVALUATION_ROOT,
+    EVALUATION_REPORT_SUBDIR,
+
 )
 
 from pathlib import Path
@@ -40,6 +43,7 @@ from src.student_performance.entity.config_entity import (
     DataValidationConfig,
     DataTransformationConfig,
     ModelTrainerConfig,
+    ModelEvaluationConfig,
 )
 
 class ConfigurationManager:
@@ -233,6 +237,7 @@ class ConfigurationManager:
     def get_model_trainer_config(self) -> ModelTrainerConfig:
         trainer_config = self.config.model_trainer
         trainer_params = self.params.model_trainer
+        tracking_params = self.params.tracking
         data_backup_config = self.config.data_backup
 
         root_dir = self.artifacts_root / TRAINER_ROOT
@@ -241,8 +246,7 @@ class ConfigurationManager:
         trained_model_filepath = root_dir / TRAINER_MODEL_SUBDIR / trainer_config.trained_model_filename
         training_report_filepath = root_dir / TRAINER_REPORTS_SUBDIR / trainer_config.training_report_filename
 
-        mlflow_cfg = trainer_params.tracking
-        mlflow_cfg.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+        tracking_params.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
 
         return ModelTrainerConfig(
             root_dir=root_dir,
@@ -250,9 +254,27 @@ class ConfigurationManager:
             training_report_filepath=training_report_filepath,
             models=trainer_params.models,
             optimization=trainer_params.optimization,
-            tracking=mlflow_cfg,
+            tracking=tracking_params,
             local_enabled=data_backup_config.local_enabled,
             s3_enabled=data_backup_config.s3_enabled,
             inference_model_filepath=inference_model_filepath,
             inference_model_serving_filepath=inference_model_serving_filepath,
+        )
+
+    def get_model_evaluation_config(self) -> ModelEvaluationConfig:
+        evaluation_config = self.config.model_evaluation
+        data_backup_config = self.config.data_backup
+        tracking_params = self.params.tracking
+
+        root_dir = self.artifacts_root / EVALUATION_ROOT
+        evaluation_report_filepath = root_dir / EVALUATION_REPORT_SUBDIR / evaluation_config.report_filename
+
+        tracking_params.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+
+        return ModelEvaluationConfig(
+            root_dir=root_dir,
+            evaluation_report_filepath=evaluation_report_filepath,
+            tracking=tracking_params,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
         )

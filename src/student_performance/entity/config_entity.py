@@ -370,3 +370,34 @@ class ModelTrainerConfig:
             f"  - Tracking:                  (hidden)",
         ]
         return "\n".join(parts)
+
+
+@dataclass
+class ModelEvaluationConfig:
+    root_dir: Path
+    evaluation_report_filepath: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    tracking: ConfigBox
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.evaluation_report_filepath = Path(self.evaluation_report_filepath)
+
+    @property
+    def evaluation_report_s3_key(self) -> str:
+        return self.evaluation_report_filepath.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nModel Evaluation Config:",
+            f"  - Root Dir:                  {self.root_dir}",
+            f"  - Evaluation Report Path:     {self.evaluation_report_filepath}",
+            f"  - Local Save Enabled:         {self.local_enabled}",
+            f"  - S3 Upload Enabled:          {self.s3_enabled}",
+            f"  - Evaluation Report S3 Key:   {self.evaluation_report_s3_key}",
+            f"  - Tracking:                   (hidden)",
+        ]
+        return "\n".join(parts)

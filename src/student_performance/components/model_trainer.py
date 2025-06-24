@@ -7,15 +7,23 @@ import mlflow
 import dagshub
 import joblib
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import get_scorer
+from sklearn.metrics import get_scorer, r2_score
 from mlflow import sklearn as mlflow_sklearn
 from pathlib import Path
 
 from src.student_performance.entity.config_entity import ModelTrainerConfig
-from src.student_performance.entity.artifact_entity import ModelTrainerArtifact, DataTransformationArtifact
+from src.student_performance.entity.artifact_entity import (
+    ModelTrainerArtifact,
+    DataTransformationArtifact,
+)
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
-from src.student_performance.utils.core import save_to_yaml, save_object, load_array, load_object
+from src.student_performance.utils.core import (
+    save_to_yaml,
+    save_object,
+    load_array,
+    load_object,
+)
 from src.student_performance.dbhandler.base_handler import DBHandler
 from src.student_performance.inference.estimator import StudentPerformanceModel
 
@@ -32,7 +40,6 @@ class ModelTrainer:
             self.transformation_artifact = transformation_artifact
             self.backup_handler = backup_handler
 
-            # set up MLflow if requested
             if trainer_config.tracking.mlflow.enabled:
                 dagshub.init(
                     repo_owner=os.getenv("DAGSHUB_REPO_OWNER"),
@@ -40,31 +47,28 @@ class ModelTrainer:
                     mlflow=True,
                 )
                 mlflow.set_tracking_uri(trainer_config.tracking.tracking_uri)
-                mlflow.set_experiment(trainer_config.tracking.mlflow.experiment_name)
-
+                mlflow.set_experiment(
+                    trainer_config.tracking.mlflow.experiment_name,
+                )
         except Exception as e:
             logger.exception("Failed to initialize ModelTrainer.")
             raise StudentPerformanceError(e, logger) from e
 
     def __load_data(self) -> None:
-        """
-        Load training and validation arrays, preferring local files when
-        enabled, otherwise falling back to S3 .npy via load_npy.
-        """
         try:
             logger.info("Loading train/val data")
 
             if self.trainer_config.local_enabled:
-                logger.info(f"Loading from local:")
+                logger.info("Loading from local")
                 self.X_train = load_array(self.transformation_artifact.x_train_filepath, "X_train")
                 self.y_train = load_array(self.transformation_artifact.y_train_filepath, "y_train")
                 self.X_val = load_array(self.transformation_artifact.x_val_filepath, "X_val")
                 self.y_val = load_array(self.transformation_artifact.y_val_filepath, "y_val")
                 self.x_preprocessor = load_object(self.transformation_artifact.x_preprocessor_filepath, "X_Processor")
-                self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath, "y_Processor")
+                self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath, "Y_Processor")
 
             elif self.trainer_config.s3_enabled and self.backup_handler:
-                logger.info(f"Loading from S3:")
+                logger.info("Loading from S3")
                 with self.backup_handler as handler:
                     self.X_train = handler.load_npy(self.transformation_artifact.x_train_s3_uri)
                     self.y_train = handler.load_npy(self.transformation_artifact.y_train_s3_uri)
@@ -77,6 +81,11 @@ class ModelTrainer:
             logger.exception("Failed to load training data.")
             raise StudentPerformanceError(e, logger) from e
 
+    @staticmethod
+    def compute_adjusted_r2(r2: float, n_samples: int, n_features: int) -> float:
+        if n_samples <= n_features + 1:
+            return np.nan
+        return 1 - (1 - r2) * ((n_samples - 1) / (n_samples - n_features - 1))
 
     def __select_and_tune(self) -> dict:
         try:
@@ -94,10 +103,14 @@ class ModelTrainer:
                         self.X_train,
                         self.y_train,
                         cv=self.trainer_config.optimization.cv_folds,
-                        scoring=self.trainer_config.optimization.scoring
+                        scoring=self.trainer_config.optimization.scoring,
                     ).mean()
                 if score > best["score"]:
-                    best.update(score=score, spec=spec, trial=(trial if self.trainer_config.optimization.enabled else None))
+                    best.update(
+                        score=score,
+                        spec=spec,
+                        trial=trial if self.trainer_config.optimization.enabled else None,
+                    )
             return best
 
         except Exception as e:
@@ -118,7 +131,9 @@ class ModelTrainer:
                         params[name] = trial.suggest_float(name, low, high, log=space.get("log", False))
             clf = self._instantiate(spec["name"], params)
             return cross_val_score(
-                clf, self.X_train, self.y_train,
+                clf,
+                self.X_train,
+                self.y_train,
                 cv=self.trainer_config.optimization.cv_folds,
                 scoring=self.trainer_config.optimization.scoring,
                 n_jobs=-1,
@@ -139,14 +154,21 @@ class ModelTrainer:
             clf = self._instantiate(spec["name"], params)
             clf.fit(self.X_train, self.y_train)
 
-            train_metrics = {
-                m: get_scorer(m)(clf, self.X_train, self.y_train)
-                for m in self.trainer_config.tracking.mlflow.metrics_to_log
-            }
-            val_metrics = {
-                m: get_scorer(m)(clf, self.X_val, self.y_val)
-                for m in self.trainer_config.tracking.mlflow.metrics_to_log
-            }
+            def compute_metrics(X, y):
+                metrics = {}
+                for m in self.trainer_config.tracking.mlflow.metrics_to_log:
+                    if m == "adjusted_r2":
+                        r2 = r2_score(y, clf.predict(X))
+                        adj_r2 = self.compute_adjusted_r2(r2, X.shape[0], X.shape[1])
+                        metrics["adjusted_r2"] = adj_r2
+                    else:
+                        scorer = get_scorer(m)
+                        metrics[m] = scorer(clf, X, y)
+                return metrics
+
+            train_metrics = compute_metrics(self.X_train, self.y_train)
+            val_metrics = compute_metrics(self.X_val, self.y_val)
+
             return clf, train_metrics, val_metrics
 
         except Exception as e:
@@ -158,13 +180,9 @@ class ModelTrainer:
         model,
         report: dict,
         inference_model,
+        experiment_id: str,
+        run_id: str,
     ) -> ModelTrainerArtifact:
-        """
-        Persist the trained model, inference wrapper, and report.
-        Saves locally if local_enabled, streams to S3 if s3_enabled.
-        Returns a ModelTrainerArtifact listing all paths and URIs.
-        """
-        # placeholders for what we actually write
         trained_local = None
         report_local = None
         inference_local = None
@@ -173,110 +191,77 @@ class ModelTrainer:
         report_s3 = None
         inference_s3 = None
 
-        try:
-            # 1) Local saves
-            if self.trainer_config.local_enabled:
-                trained_local = self.trainer_config.trained_model_filepath
-                # trained model
-                save_object(
-                    model,
-                    trained_local,
-                    label="Trained Model",
-                )
+        if self.trainer_config.local_enabled:
+            trained_local = self.trainer_config.trained_model_filepath
+            save_object(model, trained_local, label="Trained Model")
 
-                inference_local = self.trainer_config.inference_model_filepath
-                inference_serving = self.trainer_config.inference_model_serving_filepath
-                # inference wrapper
-                save_object(
-                    inference_model,
-                    inference_local,
-                    inference_serving,
-                    label="Inference Model",
-                )
+            inference_local = self.trainer_config.inference_model_filepath
+            save_object(inference_model, inference_local, label="Inference Model")
 
-                report_local = self.trainer_config.training_report_filepath
-                # YAML report
-                save_to_yaml(
-                    report,
-                    report_local,
-                    label="Training Report",
-                )
+            report_local = self.trainer_config.training_report_filepath
+            save_to_yaml(report, report_local, label="Training Report")
 
-            # 2) S3 backups
-            if self.trainer_config.s3_enabled and self.backup_handler:
-                logger.info("Streaming artifacts to S3")
-                with self.backup_handler as handler:
-                    # model & wrapper as in-memory objects
-                    trained_s3 = handler.stream_object(
-                        model,
-                        self.trainer_config.trained_model_s3_key
-                    )
-                    inference_s3 = handler.stream_object(
-                        inference_model,
-                        self.trainer_config.inference_model_s3_key,
-                    )
-                    # report as file
-                    report_s3 = handler.stream_yaml(
-                        report,
-                        self.trainer_config.training_report_s3_key,
-                    )
+        if self.trainer_config.s3_enabled and self.backup_handler:
+            logger.info("Streaming artifacts to S3")
+            with self.backup_handler as handler:
+                trained_s3 = handler.stream_object(model, self.trainer_config.trained_model_s3_key)
+                inference_s3 = handler.stream_object(inference_model, self.trainer_config.inference_model_s3_key)
+                report_s3 = handler.stream_yaml(report, self.trainer_config.training_report_s3_key)
 
-            # 3) build and return artifact
-            return ModelTrainerArtifact(
-                trained_model_filepath=trained_local,
-                training_report_filepath=report_local,
-                inference_model_filepath=inference_local,
-                x_train_filepath=self.transformation_artifact.x_train_filepath
-                    if self.trainer_config.local_enabled else None,
-                y_train_filepath=self.transformation_artifact.y_train_filepath
-                    if self.trainer_config.local_enabled else None,
-                x_val_filepath=self.transformation_artifact.x_val_filepath
-                    if self.trainer_config.local_enabled else None,
-                y_val_filepath=self.transformation_artifact.y_val_filepath
-                    if self.trainer_config.local_enabled else None,
-                x_test_filepath=self.transformation_artifact.x_test_filepath
-                    if self.trainer_config.local_enabled else None,
-                y_test_filepath=self.transformation_artifact.y_test_filepath
-                    if self.trainer_config.local_enabled else None,
+        return ModelTrainerArtifact(
+            trained_model_filepath=trained_local,
+            training_report_filepath=report_local,
+            inference_model_filepath=inference_local,
+            x_train_filepath=self.transformation_artifact.x_train_filepath if self.trainer_config.local_enabled else None,
+            y_train_filepath=self.transformation_artifact.y_train_filepath if self.trainer_config.local_enabled else None,
+            x_val_filepath=self.transformation_artifact.x_val_filepath if self.trainer_config.local_enabled else None,
+            y_val_filepath=self.transformation_artifact.y_val_filepath if self.trainer_config.local_enabled else None,
+            x_test_filepath=self.transformation_artifact.x_test_filepath if self.trainer_config.local_enabled else None,
+            y_test_filepath=self.transformation_artifact.y_test_filepath if self.trainer_config.local_enabled else None,
+            trained_model_s3_uri=trained_s3,
+            training_report_s3_uri=report_s3,
+            inference_model_s3_uri=inference_s3,
+            x_train_s3_uri=self.transformation_artifact.x_train_s3_uri if self.trainer_config.s3_enabled else None,
+            y_train_s3_uri=self.transformation_artifact.y_train_s3_uri if self.trainer_config.s3_enabled else None,
+            x_val_s3_uri=self.transformation_artifact.x_val_s3_uri if self.trainer_config.s3_enabled else None,
+            y_val_s3_uri=self.transformation_artifact.y_val_s3_uri if self.trainer_config.s3_enabled else None,
+            x_test_s3_uri=self.transformation_artifact.x_test_s3_uri if self.trainer_config.s3_enabled else None,
+            y_test_s3_uri=self.transformation_artifact.y_test_s3_uri if self.trainer_config.s3_enabled else None,
+            experiment_id=experiment_id,
+            run_id=run_id,
+        )
 
-                trained_model_s3_uri=trained_s3,
-                training_report_s3_uri=report_s3,
-                inference_model_s3_uri=inference_s3,
-                x_train_s3_uri=self.transformation_artifact.x_train_s3_uri
-                    if self.trainer_config.s3_enabled else None,
-                y_train_s3_uri=self.transformation_artifact.y_train_s3_uri
-                    if self.trainer_config.s3_enabled else None,
-                x_val_s3_uri=self.transformation_artifact.x_val_s3_uri
-                    if self.trainer_config.s3_enabled else None,
-                y_val_s3_uri=self.transformation_artifact.y_val_s3_uri
-                    if self.trainer_config.s3_enabled else None,
-                x_test_s3_uri=self.transformation_artifact.x_test_s3_uri
-                    if self.trainer_config.s3_enabled else None,
-                y_test_s3_uri=self.transformation_artifact.y_test_s3_uri
-                    if self.trainer_config.s3_enabled else None,
-            )
-
-        except Exception as e:
-            logger.exception("Failed to save artifacts.")
-            raise StudentPerformanceError(e, logger) from e
-
+    def __to_positive(self, metrics: dict[str, float]) -> dict[str, float]:
+        out: dict[str, float] = {}
+        for name, val in metrics.items():
+            if name.startswith("neg_"):
+                out[name[4:]] = -val
+            else:
+                out[name] = val
+        return out
 
     def run_training(self) -> ModelTrainerArtifact:
         try:
             logger.info("========== Starting Model Training ==========")
             self.__load_data()
 
-            with mlflow.start_run():
+            with mlflow.start_run() as active_run:
+                exp_id = active_run.info.experiment_id
+                run_id = active_run.info.run_id
+
                 best = self.__select_and_tune()
                 params = best["trial"].params if best["trial"] else best["spec"].get("params", {})
+
                 model, train_m, val_m = self.__train_and_evaluate(best["spec"], params)
 
-                # log to MLflow
+                train_pos = self.__to_positive(train_m)
+                val_pos = self.__to_positive(val_m)
+
                 mlflow.log_params(params)
-                for k, v in train_m.items():
-                    mlflow.log_metric(f"train_{k}", v)
-                for k, v in val_m.items():
-                    mlflow.log_metric(f"val_{k}", v)
+                for name, val in train_pos.items():
+                    mlflow.log_metric(f"train_{name}", val)
+                for name, val in val_pos.items():
+                    mlflow.log_metric(f"val_{name}", val)
 
                 inference_model = StudentPerformanceModel.from_objects(
                     model=model,
@@ -288,8 +273,8 @@ class ModelTrainer:
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "best_model": best["spec"]["name"].split(".")[-1],
                     "best_params": params,
-                    "train_metrics": train_m,
-                    "val_metrics": val_m,
+                    "train_metrics": train_pos,
+                    "val_metrics": val_pos,
                     "optimization": {
                         "enabled": self.trainer_config.optimization.enabled,
                         "best_score": best["score"],
@@ -299,7 +284,7 @@ class ModelTrainer:
                 }
 
             logger.info("========== Model Training Completed ==========")
-            return self.__save_artifacts(model, report, inference_model)
+            return self.__save_artifacts(model, report, inference_model, exp_id, run_id)
 
         except Exception as e:
             logger.exception("Model training pipeline failed.")

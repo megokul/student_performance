@@ -171,6 +171,9 @@ class ModelTrainerArtifact:
     x_test_s3_uri: str | None = None
     y_test_s3_uri: str | None = None
 
+    experiment_id: str | None = None
+    run_id: str | None = None
+
     def __repr__(self) -> str:
         tm_local = (
             self.trained_model_filepath.as_posix()
@@ -224,6 +227,9 @@ class ModelTrainerArtifact:
         xts_s3 = self.x_test_s3_uri or "None"
         yts_s3 = self.y_test_s3_uri or "None"
 
+        exp = self.experiment_id or "None"
+        run = self.run_id or "None"
+
         return (
             "\nModel Trainer Artifact:\n"
             f"  - Trained Model Local Path:      '{tm_local}'\n"
@@ -245,5 +251,36 @@ class ModelTrainerArtifact:
             f"  - Y Val S3 URI:                  '{yv_s3}'\n"
             f"  - X Test S3 URI:                 '{xts_s3}'\n"
             f"  - Y Test S3 URI:                 '{yts_s3}'"
+            "\n"
+            f"  - MLflow Experiment ID:          '{exp}'\n"
+            f"  - MLflow Run ID:                 '{run}'"
         )
 
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class ModelEvaluationArtifact:
+    evaluation_report_filepath: Path | None = None
+    evaluation_report_s3_uri: str | None = None
+    experiment_id: str | None = None
+    run_id: str | None = None
+
+    def __repr__(self) -> str:
+        er_local = (
+            self.evaluation_report_filepath.as_posix()
+            if self.evaluation_report_filepath
+            else "None"
+        )
+        er_s3 = self.evaluation_report_s3_uri or "None"
+        exp = self.experiment_id or "None"
+        run = self.run_id or "None"
+
+        return (
+            "\nModel Evaluation Artifact:\n"
+            f"  - Evaluation Report Local Path:  '{er_local}'\n"
+            f"  - Evaluation Report S3 URI:      '{er_s3}'\n"
+            f"  - MLflow Experiment ID:          '{exp}'\n"
+            f"  - MLflow Run ID:                 '{run}'"
+        )

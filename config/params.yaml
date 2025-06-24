@@ -102,18 +102,30 @@ model_trainer:
     enabled: true
     method: optuna
     n_trials: 30
-    direction: minimize
+    direction: maximize
     cv_folds: 5
     scoring: neg_root_mean_squared_error
 
-  tracking:
-    mlflow:
-      enabled: true
-      experiment_name: StudentPerformanceExperiment
-      registry_model_name: StudentPerformanceModel
-      metrics_to_log:
-        - neg_root_mean_squared_error
-        - r2
-        - neg_mean_absolute_error
-        - neg_mean_squared_error
-      log_trials: false
+tracking:
+  mlflow:
+    enabled: true
+    experiment_name: StudentPerformanceExperiment
+    registry_model_name: StudentPerformanceModel
+    metrics_to_log:
+      - neg_root_mean_squared_error
+      - r2
+      - neg_mean_absolute_error
+      - neg_mean_squared_error
+      - adjusted_r2
+    log_trials: false
+  
+model_evaluation:
+  metrics:
+    - mean_absolute_error
+    - mean_squared_error
+    - root_mean_squared_error
+    - r2
+    - adjusted_r2
+    - median_absolute_error
+    - explained_variance_score
+  

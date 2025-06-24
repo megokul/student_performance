@@ -8,6 +8,7 @@ from src.student_performance.components.data_ingestion import DataIngestion
 from src.student_performance.components.data_validation import DataValidation
 from src.student_performance.components.data_transformation import DataTransformation
 from src.student_performance.components.model_trainer import ModelTrainer
+from src.student_performance.components.model_evaluation import ModelEvaluation  # ✅ add import
 
 
 class TrainingPipeline:
@@ -71,6 +72,16 @@ class TrainingPipeline:
             )
             model_trainer_artifact = model_trainer.run_training()
             logger.info(f"Model Trainer Artifact: {model_trainer_artifact}")
+
+            # Step 6: Run model evaluation
+            model_evaluation_config = self.config_manager.get_model_evaluation_config()
+            model_evaluation = ModelEvaluation(
+                evaluation_config=model_evaluation_config,
+                trainer_artifact=model_trainer_artifact,
+                backup_handler=s3_handler,
+            )
+            model_evaluation_artifact = model_evaluation.run_evaluation()
+            logger.info(f"Model Evaluation Artifact: {model_evaluation_artifact}")
 
             logger.info("========== Training Pipeline Completed ==========")
 
