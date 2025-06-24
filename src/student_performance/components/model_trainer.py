@@ -47,9 +47,11 @@ class ModelTrainer:
                     mlflow=True,
                 )
                 mlflow.set_tracking_uri(trainer_config.tracking.tracking_uri)
-                mlflow.set_experiment(
-                    trainer_config.tracking.mlflow.experiment_name,
-                )
+
+                if trainer_config.tracking.mlflow.experiment_name:
+                    mlflow.set_experiment(
+                        trainer_config.tracking.mlflow.experiment_name,
+                    )
         except Exception as e:
             logger.exception("Failed to initialize ModelTrainer.")
             raise StudentPerformanceError(e, logger) from e

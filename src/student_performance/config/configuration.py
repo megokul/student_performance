@@ -265,6 +265,7 @@ class ConfigurationManager:
         evaluation_config = self.config.model_evaluation
         data_backup_config = self.config.data_backup
         tracking_params = self.params.tracking
+        eval_metrics = self.params.model_evaluation
 
         root_dir = self.artifacts_root / EVALUATION_ROOT
         evaluation_report_filepath = root_dir / EVALUATION_REPORT_SUBDIR / evaluation_config.report_filename
@@ -277,4 +278,5 @@ class ConfigurationManager:
             tracking=tracking_params,
             local_enabled=data_backup_config.local_enabled,
             s3_enabled=data_backup_config.s3_enabled,
+            eval_metrics=eval_metrics,
         )

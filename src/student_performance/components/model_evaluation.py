@@ -40,11 +40,12 @@ class ModelEvaluation:
             # Load model and test data
             self._load_data()
 
+            run_id = self.trainer_artifact.run_id
+
             # Set up MLflow tracking if enabled
             if self.evaluation_config.tracking.mlflow.enabled:
-                logger.info("MLflow tracking is enabled for evaluation.")
-                mlflow.set_tracking_uri(self.evaluation_config.tracking.tracking_uri)
-                mlflow.set_experiment(self.evaluation_config.tracking.mlflow.experiment_name)
+                logger.info(f"Resuming MLflow run {run_id}")
+                mlflow.start_run(run_id=run_id)
 
         except Exception as e:
             logger.exception("Failed to initialize ModelEvaluation.")
@@ -96,45 +97,62 @@ class ModelEvaluation:
             return np.nan
         return 1 - (1 - r2) * ((n_samples - 1) / (n_samples - n_features - 1))
 
-    def evaluate(self) -> Dict[str, Any]:
+    def _save_report(self, results: Dict[str, float]) -> None:
+        """Save the evaluation report locally or to S3 based on config."""
+        try:
+            if self.evaluation_config.local_enabled:
+                report_path = self.evaluation_config.evaluation_report_filepath
+                save_to_yaml(results, str(report_path), label="Evaluation Report")
+                logger.info(f"Saved evaluation report locally at {report_path}")
+
+            if self.evaluation_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    report_s3_uri = handler.stream_yaml(
+                        results,
+                        self.evaluation_config.evaluation_report_s3_key
+                    )
+                    logger.info(f"Saved evaluation report to S3 at {report_s3_uri}")
+
+        except Exception as e:
+            logger.exception("Failed to save evaluation report.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def run_evaluation(self) -> Dict[str, Any]:
         try:
             logger.info("Starting model evaluation.")
-            y_pred = self.model.predict(self.test_X)
-            n_samples, n_features = self.test_X.shape
+            y_pred = self.model.predict(self.x_test)
+            n_samples, n_features = self.x_test.shape
 
-            metrics_config = self.config.model_evaluation.metrics
+            eval_metrics = self.evaluation_config.eval_metrics.metrics
             results: Dict[str, float] = {}
 
-            for metric in metrics_config:
+            for metric in eval_metrics:
                 if metric == "mean_absolute_error":
-                    results["mean_absolute_error"] = mean_absolute_error(self.test_y, y_pred)
+                    results["mean_absolute_error"] = mean_absolute_error(self.y_test, y_pred)
                 elif metric == "mean_squared_error":
-                    results["mean_squared_error"] = mean_squared_error(self.test_y, y_pred)
+                    results["mean_squared_error"] = mean_squared_error(self.y_test, y_pred)
                 elif metric == "root_mean_squared_error":
-                    results["root_mean_squared_error"] = np.sqrt(mean_squared_error(self.test_y, y_pred))
+                    results["root_mean_squared_error"] = np.sqrt(mean_squared_error(self.y_test, y_pred))
                 elif metric == "median_absolute_error":
-                    results["median_absolute_error"] = median_absolute_error(self.test_y, y_pred)
+                    results["median_absolute_error"] = median_absolute_error(self.y_test, y_pred)
                 elif metric == "explained_variance_score":
-                    results["explained_variance_score"] = explained_variance_score(self.test_y, y_pred)
+                    results["explained_variance_score"] = explained_variance_score(self.y_test, y_pred)
                 elif metric == "r2":
-                    results["r2"] = r2_score(self.test_y, y_pred)
+                    results["r2"] = r2_score(self.y_test, y_pred)
                 elif metric == "adjusted_r2":
-                    r2_val = r2_score(self.test_y, y_pred)
+                    r2_val = r2_score(self.y_test, y_pred)
                     results["adjusted_r2"] = self.compute_adjusted_r2(r2_val, n_samples, n_features)
                 else:
                     logger.warning(f"Unsupported metric: {metric}")
 
             logger.info(f"Evaluation results: {results}")
 
-            if self.config.tracking.mlflow.enabled:
+            if self.evaluation_config.tracking.mlflow.enabled:
                 for k, v in results.items():
                     mlflow.log_metric(f"test_{k}", v)
 
-            # Save to file
-            report_path = self.output_dir / self.config.model_evaluation.report_filename
-            save_to_yaml(results, str(report_path), label="Evaluation Report")
+            self._save_report(results)
 
-            logger.info(f"Saved evaluation report at {report_path}")
             return results
 
         except Exception as e:

@@ -382,6 +382,8 @@ class ModelEvaluationConfig:
 
     tracking: ConfigBox
 
+    eval_metrics: ConfigBox
+
     def __post_init__(self) -> None:
         self.root_dir = Path(self.root_dir)
         self.evaluation_report_filepath = Path(self.evaluation_report_filepath)
@@ -399,5 +401,6 @@ class ModelEvaluationConfig:
             f"  - S3 Upload Enabled:          {self.s3_enabled}",
             f"  - Evaluation Report S3 Key:   {self.evaluation_report_s3_key}",
             f"  - Tracking:                   (hidden)",
+            f"  - Metrics:                    (hidden)",
         ]
         return "\n".join(parts)
