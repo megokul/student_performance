@@ -48,5 +48,5 @@ s3_handler:
   
 data_backup:
   s3_enabled: true
-  local_enabled: false
+  local_enabled: true
 

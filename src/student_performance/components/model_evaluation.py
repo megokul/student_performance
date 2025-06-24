@@ -1,5 +1,8 @@
 from typing import Any, Dict
 import numpy as np
+from pathlib import Path
+import yaml
+from datetime import datetime, timezone
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -8,21 +11,20 @@ from sklearn.metrics import (
     r2_score,
 )
 import mlflow
-from pathlib import Path
 from src.student_performance.exception.exception import StudentPerformanceError
 from src.student_performance.logging import logger
-from src.student_performance.utils.core import save_to_yaml
+from src.student_performance.utils.core import (
+    save_to_yaml,
+    load_array,
+    load_object,
+)
 from src.student_performance.dbhandler.base_handler import DBHandler
 from src.student_performance.entity.config_entity import ModelEvaluationConfig
 from src.student_performance.entity.artifact_entity import (
     ModelTrainerArtifact,
     ModelEvaluationArtifact,
 )
-from src.student_performance.utils.core import (
-    save_to_yaml,
-    load_array,
-    load_object,
-)
+
 
 class ModelEvaluation:
     def __init__(
@@ -37,13 +39,12 @@ class ModelEvaluation:
             self.trainer_artifact = trainer_artifact
             self.backup_handler = backup_handler
 
-            # Load model and test data
             self._load_data()
 
-            run_id = self.trainer_artifact.run_id
-
-            # Set up MLflow tracking if enabled
             if self.evaluation_config.tracking.mlflow.enabled:
+                run_id = self.trainer_artifact.run_id
+                if not run_id:
+                    raise StudentPerformanceError("Trainer run_id is missing; cannot resume MLflow run.", logger)
                 logger.info(f"Resuming MLflow run {run_id}")
                 mlflow.start_run(run_id=run_id)
 
@@ -52,7 +53,6 @@ class ModelEvaluation:
             raise StudentPerformanceError(e, logger) from e
 
     def _load_data(self):
-        """Load model, X_test, and y_test based on local_enabled / s3_enabled flags."""
         try:
             if self.evaluation_config.local_enabled:
                 logger.info("Loading model and data from local paths.")
@@ -97,27 +97,41 @@ class ModelEvaluation:
             return np.nan
         return 1 - (1 - r2) * ((n_samples - 1) / (n_samples - n_features - 1))
 
-    def _save_report(self, results: Dict[str, float]) -> None:
-        """Save the evaluation report locally or to S3 based on config."""
-        try:
-            if self.evaluation_config.local_enabled:
-                report_path = self.evaluation_config.evaluation_report_filepath
-                save_to_yaml(results, str(report_path), label="Evaluation Report")
-                logger.info(f"Saved evaluation report locally at {report_path}")
+    def _save_report(self, metrics: dict[str, float]) -> tuple[Path, str]:
+        # build report with only Python scalars
+        report = {
+            "experiment_id": self.trainer_artifact.experiment_id,
+            "run_id":         self.trainer_artifact.run_id,
+            **metrics,
+        }
+        # convert any numpy scalars to built-ins
+        def _make_pure_python(obj):
+            if isinstance(obj, dict):
+                return {k: _make_pure_python(v) for k, v in obj.items()}
+            if hasattr(obj, "item") and callable(obj.item):
+                return obj.item()
+            return obj
 
-            if self.evaluation_config.s3_enabled and self.backup_handler:
-                with self.backup_handler as handler:
-                    report_s3_uri = handler.stream_yaml(
-                        results,
-                        self.evaluation_config.evaluation_report_s3_key
-                    )
-                    logger.info(f"Saved evaluation report to S3 at {report_s3_uri}")
+        report = _make_pure_python(report)
 
-        except Exception as e:
-            logger.exception("Failed to save evaluation report.")
-            raise StudentPerformanceError(e, logger) from e
+        local_path = None
+        s3_uri = None
 
-    def run_evaluation(self) -> Dict[str, Any]:
+        if self.evaluation_config.local_enabled:
+            local_path = self.evaluation_config.evaluation_report_filepath
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            # use safe_dump
+            with open(local_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(report, f, sort_keys=False)
+
+        if self.evaluation_config.s3_enabled and self.backup_handler:
+            with self.backup_handler as handler:
+                # re-use your existing stream_yaml which already converts NumPy types
+                s3_uri = handler.stream_yaml(report, self.evaluation_config.evaluation_report_s3_key)
+
+        return local_path, s3_uri
+
+    def run_evaluation(self) -> ModelEvaluationArtifact:
         try:
             logger.info("Starting model evaluation.")
             y_pred = self.model.predict(self.x_test)
@@ -151,9 +165,7 @@ class ModelEvaluation:
                 for k, v in results.items():
                     mlflow.log_metric(f"test_{k}", v)
 
-            self._save_report(results)
-
-            return results
+            return self._save_report(results)
 
         except Exception as e:
             logger.exception("Model evaluation failed.")

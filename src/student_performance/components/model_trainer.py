@@ -5,10 +5,8 @@ import numpy as np
 import optuna
 import mlflow
 import dagshub
-import joblib
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import get_scorer, r2_score
-from mlflow import sklearn as mlflow_sklearn
 from pathlib import Path
 
 from src.student_performance.entity.config_entity import ModelTrainerConfig
@@ -47,11 +45,8 @@ class ModelTrainer:
                     mlflow=True,
                 )
                 mlflow.set_tracking_uri(trainer_config.tracking.tracking_uri)
-
                 if trainer_config.tracking.mlflow.experiment_name:
-                    mlflow.set_experiment(
-                        trainer_config.tracking.mlflow.experiment_name,
-                    )
+                    mlflow.set_experiment(trainer_config.tracking.mlflow.experiment_name)
         except Exception as e:
             logger.exception("Failed to initialize ModelTrainer.")
             raise StudentPerformanceError(e, logger) from e
@@ -61,7 +56,6 @@ class ModelTrainer:
             logger.info("Loading train/val data")
 
             if self.trainer_config.local_enabled:
-                logger.info("Loading from local")
                 self.X_train = load_array(self.transformation_artifact.x_train_filepath, "X_train")
                 self.y_train = load_array(self.transformation_artifact.y_train_filepath, "y_train")
                 self.X_val = load_array(self.transformation_artifact.x_val_filepath, "X_val")
@@ -70,7 +64,6 @@ class ModelTrainer:
                 self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath, "Y_Processor")
 
             elif self.trainer_config.s3_enabled and self.backup_handler:
-                logger.info("Loading from S3")
                 with self.backup_handler as handler:
                     self.X_train = handler.load_npy(self.transformation_artifact.x_train_s3_uri)
                     self.y_train = handler.load_npy(self.transformation_artifact.y_train_s3_uri)
@@ -177,18 +170,10 @@ class ModelTrainer:
             logger.exception("Final training/evaluation failed.")
             raise StudentPerformanceError(e, logger) from e
 
-    def __save_artifacts(
-        self,
-        model,
-        report: dict,
-        inference_model,
-        experiment_id: str,
-        run_id: str,
-    ) -> ModelTrainerArtifact:
+    def __save_artifacts(self, model, report, inference_model, experiment_id, run_id):
         trained_local = None
         report_local = None
         inference_local = None
-
         trained_s3 = None
         report_s3 = None
         inference_s3 = None
@@ -204,7 +189,6 @@ class ModelTrainer:
             save_to_yaml(report, report_local, label="Training Report")
 
         if self.trainer_config.s3_enabled and self.backup_handler:
-            logger.info("Streaming artifacts to S3")
             with self.backup_handler as handler:
                 trained_s3 = handler.stream_object(model, self.trainer_config.trained_model_s3_key)
                 inference_s3 = handler.stream_object(inference_model, self.trainer_config.inference_model_s3_key)
@@ -234,7 +218,7 @@ class ModelTrainer:
         )
 
     def __to_positive(self, metrics: dict[str, float]) -> dict[str, float]:
-        out: dict[str, float] = {}
+        out = {}
         for name, val in metrics.items():
             if name.startswith("neg_"):
                 out[name[4:]] = -val

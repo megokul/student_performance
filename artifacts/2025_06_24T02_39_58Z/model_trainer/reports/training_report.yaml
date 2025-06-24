@@ -1,0 +1,23 @@
+timestamp: '2025-06-24T02:41:49.446257+00:00'
+best_model: GradientBoostingRegressor
+best_params:
+  n_estimators: 200
+  learning_rate: 0.017217163780584688
+  max_depth: 3
+train_metrics:
+  root_mean_squared_error: 0.8455565961922
+  r2: 0.28503404263586085
+  mean_absolute_error: 0.6790297169723596
+  mean_squared_error: 0.7149659573641391
+  adjusted_r2: 0.2741370170367461
+val_metrics:
+  root_mean_squared_error: 0.8591582757549605
+  r2: 0.20877829382453583
+  mean_absolute_error: 0.6859152905205294
+  mean_squared_error: 0.7381529427982368
+  adjusted_r2: 0.1713977407768762
+optimization:
+  enabled: true
+  best_score: -0.8925061588291836
+  direction: maximize
+  cv_folds: 5
