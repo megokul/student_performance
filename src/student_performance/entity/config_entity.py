@@ -404,3 +404,36 @@ class ModelEvaluationConfig:
             f"  - Metrics:                    (hidden)",
         ]
         return "\n".join(parts)
+
+
+@dataclass
+class ModelPredictionConfig:
+    root_dir: Path
+    inference_model_filepath: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.inference_model_filepath = Path(self.inference_model_filepath)
+
+    @property
+    def inference_model_s3_key(self) -> str:
+        return self.inference_model_filepath.as_posix()
+
+    @property
+    def root_s3_key(self) -> str:
+        return self.root_dir.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nModel Prediction Config:",
+            f"  - Root Dir:                  {self.root_dir}",
+            f"  - Inference Model Path:      {self.inference_model_filepath or 'None'}",
+            f"  - Local Save Enabled:        {self.local_enabled}",
+            f"  - S3 Upload Enabled:         {self.s3_enabled}",
+            f"  - Root S3 Key:               {self.root_s3_key}",
+            f"  - Inference Model S3 Key:    {self.inference_model_s3_key or 'None'}",
+        ]
+        return "\n".join(parts)

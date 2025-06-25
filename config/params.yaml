@@ -20,13 +20,15 @@ transformation_params:
   steps:
     x:
       - encoding
-      - standardization
     y:
       - column_math
-      - standardization
 
   methods:
     x:
+      column_operation:
+        method: remove_col
+        columns:
+          - id
       encoding:
         method: one_hot
         handle_unknown: ignore

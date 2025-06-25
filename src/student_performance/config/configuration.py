@@ -29,6 +29,7 @@ from src.student_performance.constants.constants import (
     TRAINER_INFERENCE_SUBDIR,
     EVALUATION_ROOT,
     EVALUATION_REPORT_SUBDIR,
+    PREDICTION_ROOT,
 
 )
 
@@ -44,6 +45,7 @@ from src.student_performance.entity.config_entity import (
     DataTransformationConfig,
     ModelTrainerConfig,
     ModelEvaluationConfig,
+    ModelPredictionConfig,
 )
 
 class ConfigurationManager:
@@ -279,4 +281,18 @@ class ConfigurationManager:
             local_enabled=data_backup_config.local_enabled,
             s3_enabled=data_backup_config.s3_enabled,
             eval_metrics=eval_metrics,
+        )
+
+    def get_model_prediction_config(self) -> ModelPredictionConfig:
+        trainer_config = self.config.model_trainer
+        data_backup_config = self.config.data_backup
+
+        root_dir = Path(PREDICTION_ROOT)
+        inference_model_filepath = Path(INFERENCE_MODEL_ROOT) / trainer_config.inference_model_filename
+
+        return ModelPredictionConfig(
+            root_dir=root_dir,
+            inference_model_filepath=inference_model_filepath,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
         )

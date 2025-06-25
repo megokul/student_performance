@@ -44,3 +44,5 @@ INFERENCE_MODEL_ROOT = "inference_model"
 
 EVALUATION_ROOT = "model_evaluation"
 EVALUATION_REPORT_SUBDIR = "reports"
+
+PREDICTION_ROOT = "predictions"

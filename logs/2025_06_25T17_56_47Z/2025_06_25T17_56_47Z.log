@@ -1,0 +1,20 @@
+[2025-06-25 18:56:48,100] - INFO - core - YAML successfully loaded from: 'config/config.yaml'
+[2025-06-25 18:56:48,763] - INFO - core - YAML successfully loaded from: 'config/params.yaml'
+[2025-06-25 18:56:49,033] - INFO - core - YAML successfully loaded from: 'config/schema.yaml'
+[2025-06-25 18:56:49,300] - INFO - core - YAML successfully loaded from: 'config/templates.yaml'
+[2025-06-25 18:56:49,571] - INFO - s3_handler - S3Handler initialized for bucket 'studentperformance-dev-artifacts' in region 'us-east-1'
+[2025-06-25 18:56:49,838] - INFO - model_prediction - Initializing ModelPrediction.
+[2025-06-25 18:56:50,100] - INFO - model_prediction - Loading inference model from local path.
+[2025-06-25 18:56:50,933] - INFO - core - Inference Model loaded from: 'inference_model/inference_model.joblib'
+[2025-06-25 18:57:03,924] - INFO - model_prediction - Running prediction using inference model.
+[2025-06-25 18:57:04,700] - INFO - model_prediction - Saved predictions locally at predictions\20250625T175650Z\20250625T175650Z_preds.csv
+[2025-06-25 18:57:04,965] - INFO - s3_handler - S3Handler context entered
+[2025-06-25 18:57:06,025] - INFO - s3_handler - Streamed DataFrame as CSV to: s3://studentperformance-dev-artifacts/predictions/20250625T175650Z/20250625T175650Z_preds.csv
+[2025-06-25 18:57:06,310] - INFO - model_prediction - Saved predictions to S3 at predictions/20250625T175650Z/20250625T175650Z_preds.csv
+[2025-06-25 18:57:06,602] - INFO - s3_handler - S3Handler context exited
+[2025-06-25 18:57:13,051] - INFO - model_prediction - Running prediction using inference model.
+[2025-06-25 18:57:14,001] - INFO - model_prediction - Saved predictions locally at predictions\20250625T175650Z\20250625T175650Z_preds.csv
+[2025-06-25 18:57:14,472] - INFO - s3_handler - S3Handler context entered
+[2025-06-25 18:57:15,603] - INFO - s3_handler - Streamed DataFrame as CSV to: s3://studentperformance-dev-artifacts/predictions/20250625T175650Z/20250625T175650Z_preds.csv
+[2025-06-25 18:57:15,879] - INFO - model_prediction - Saved predictions to S3 at predictions/20250625T175650Z/20250625T175650Z_preds.csv
+[2025-06-25 18:57:16,153] - INFO - s3_handler - S3Handler context exited

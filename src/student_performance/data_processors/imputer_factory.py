@@ -2,9 +2,7 @@ from typing import Optional
 from ensure import ensure_annotations
 from sklearn.pipeline import Pipeline
 from sklearn.impute import KNNImputer, SimpleImputer
-# explicitly require this experimental feature
 from sklearn.experimental import enable_iterative_imputer  # noqa
-# now you can import normally from impute
 from sklearn.impute import IterativeImputer
 
 from src.student_performance.exception.exception import StudentPerformanceError
@@ -14,6 +12,12 @@ from src.student_performance.logging import logger
 class ImputerFactory:
     """
     Factory to build imputation pipelines for numerical data.
+
+    Supported methods:
+        - knn
+        - simple
+        - iterative
+        - custom (requires callable in params)
     """
 
     _SUPPORTED_METHODS = {
@@ -30,17 +34,26 @@ class ImputerFactory:
         is_target: bool = False
     ) -> Pipeline:
         try:
+            logger.debug("Requested imputer: method='%s', is_target=%s", method, is_target)
+
+            params = params or {}
+
             if method == "custom":
-                if not params or "custom_callable" not in params:
+                if "custom_callable" not in params:
                     raise ValueError("Custom imputer requires a 'custom_callable' in params.")
+                logger.info("Using custom imputer callable.")
                 imputer = params["custom_callable"]()
             else:
                 ImputerClass = ImputerFactory._SUPPORTED_METHODS.get(method)
                 if not ImputerClass:
                     raise ValueError(f"Unsupported imputation method: {method}")
-                imputer = ImputerClass(**(params or {}))
 
+                logger.info("Initializing %s imputer with params: %s", method, params)
+                imputer = ImputerClass(**params)
+
+            logger.info("Successfully created imputer pipeline using method: %s", method)
             return Pipeline(steps=[("imputer", imputer)])
 
         except Exception as e:
+            logger.exception("Failed to build imputer pipeline using method: %s", method)
             raise StudentPerformanceError(e, logger) from e

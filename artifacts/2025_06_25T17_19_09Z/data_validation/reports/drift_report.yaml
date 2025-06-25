@@ -1,0 +1,45 @@
+drift_check_performed: true
+drift_method: ks_test
+columns:
+  gender:
+    p_value: 1.0
+    drift: &id001 !!python/object/apply:numpy._core.multiarray.scalar
+    - !!python/object/apply:numpy.dtype
+      args:
+      - b1
+      - false
+      - true
+      state: !!python/tuple
+      - 3
+      - '|'
+      - null
+      - null
+      - null
+      - -1
+      - -1
+      - 0
+    - !!binary |
+      AA==
+  race_ethnicity:
+    p_value: 1.0
+    drift: *id001
+  parental_level_of_education:
+    p_value: 1.0
+    drift: *id001
+  lunch:
+    p_value: 1.0
+    drift: *id001
+  test_preparation_course:
+    p_value: 1.0
+    drift: *id001
+  math_score:
+    p_value: 1.0
+    drift: *id001
+  reading_score:
+    p_value: 1.0
+    drift: *id001
+  writing_score:
+    p_value: 1.0
+    drift: *id001
+timestamp: 2025_06_25T17_19_09Z
+drift_detected: false

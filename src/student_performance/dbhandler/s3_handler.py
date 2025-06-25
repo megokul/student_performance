@@ -290,3 +290,34 @@ class S3Handler(DBHandler):
         except Exception as e:
             logger.exception("Failed to load object from S3: %s", s3_uri)
             raise StudentPerformanceError(e, logger) from e
+
+    def stream_df_as_csv(self, df: pd.DataFrame, s3_key: str) -> str:
+        """
+        Convert a pandas DataFrame to CSV in memory and stream it to S3.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to stream.
+            s3_key (str): The S3 key under which the CSV will be saved.
+
+        Returns:
+            str: The full s3:// URI where the CSV is stored.
+        """
+        try:
+            buf = BytesIO()
+            df.to_csv(buf, index=False)
+            buf.seek(0)
+
+            self._client.put_object(
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+                Body=buf.read(),
+                ContentType='text/csv',
+            )
+
+            uri = f"s3://{self.config.bucket_name}/{s3_key}"
+            logger.info("Streamed DataFrame as CSV to: %s", uri)
+            return uri
+
+        except Exception as e:
+            logger.exception("Failed to stream DataFrame as CSV to S3.")
+            raise StudentPerformanceError(e, logger) from e

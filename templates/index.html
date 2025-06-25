@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Performance Predictor</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+        h1 { color: #333; }
+        select, input[type="text"] { width: 100%; padding: 8px; margin: 5px 0 15px 0; }
+        button { padding: 10px 20px; font-size: 16px; }
+        .result { margin-top: 20px; font-weight: bold; color: green; }
+        .error { margin-top: 20px; font-weight: bold; color: red; }
+    </style>
+</head>
+<body>
+    <h1>Student Performance Predictor</h1>
+
+    <form id="predictForm">
+        <label for="gender">Gender:</label>
+        <select id="gender" name="gender" required>
+            <option value="">Select</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+        </select>
+
+        <label for="race_ethnicity">Race/Ethnicity:</label>
+        <select id="race_ethnicity" name="race_ethnicity" required>
+            <option value="">Select</option>
+            <option value="group A">Group A</option>
+            <option value="group B">Group B</option>
+            <option value="group C">Group C</option>
+            <option value="group D">Group D</option>
+            <option value="group E">Group E</option>
+        </select>
+
+        <label for="parent_edu">Parental Level of Education:</label>
+        <select id="parent_edu" name="parent_edu" required>
+            <option value="">Select</option>
+            <option value="high school">High School</option>
+            <option value="some college">Some College</option>
+            <option value="associate's degree">Associate's Degree</option>
+            <option value="bachelor's degree">Bachelor's Degree</option>
+            <option value="master's degree">Master's Degree</option>
+        </select>
+
+        <label for="lunch">Lunch:</label>
+        <select id="lunch" name="lunch" required>
+            <option value="">Select</option>
+            <option value="standard">Standard</option>
+            <option value="free/reduced">Free/Reduced</option>
+        </select>
+
+        <label for="prep_course">Test Preparation Course:</label>
+        <select id="prep_course" name="prep_course" required>
+            <option value="">Select</option>
+            <option value="none">None</option>
+            <option value="completed">Completed</option>
+        </select>
+
+        <button type="submit">Predict</button>
+    </form>
+
+    <div id="output"></div>
+
+    <script>
+        document.getElementById("predictForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const gender = document.getElementById("gender").value;
+            const race_ethnicity = document.getElementById("race_ethnicity").value;
+            const parental_level_of_education = document.getElementById("parent_edu").value;
+            const lunch = document.getElementById("lunch").value;
+            const test_preparation_course = document.getElementById("prep_course").value;
+
+            // Order must match training
+            const inputArray = [
+                gender,
+                race_ethnicity,
+                parental_level_of_education,
+                lunch,
+                test_preparation_course,
+            ];
+
+            const response = await fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ input: inputArray })
+            });
+
+            const outputDiv = document.getElementById("output");
+            if (response.ok) {
+                const data = await response.json();
+                outputDiv.innerHTML = `<div class="result">Prediction: ${data.predictions[0]}</div>`;
+            } else {
+                const errorData = await response.json();
+                outputDiv.innerHTML = `<div class="error">Error: ${errorData.error || "Unknown error"}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

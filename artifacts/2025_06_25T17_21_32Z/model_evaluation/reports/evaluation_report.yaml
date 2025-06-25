@@ -1,0 +1,9 @@
+experiment_id: '0'
+run_id: 3efb93f3dd4b4aec8124d8bbe1ec0433
+mean_absolute_error: 11.029812948807976
+mean_squared_error: 191.23310467706492
+root_mean_squared_error: 13.828705820757953
+r2: 0.1611696469799443
+adjusted_r2: 0.08281736125829087
+median_absolute_error: 9.681326308873501
+explained_variance_score: 0.17053958108760237

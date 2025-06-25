@@ -14,7 +14,7 @@ class StudentPerformanceModel:
     """
     model: Any
     x_preprocessor: Any | None = None
-    y_preprocessor: Any | None = None
+    # y_preprocessor: Any | None = None
 
     def predict(self, X):
         """
@@ -28,8 +28,8 @@ class StudentPerformanceModel:
 
             preds = self.model.predict(data)
 
-            if self.y_preprocessor is not None:
-                preds = self.y_preprocessor.inverse_transform(preds)
+            # if self.y_preprocessor is not None:
+            #     preds = self.y_preprocessor.inverse_transform(preds)
 
             return preds
 
@@ -42,7 +42,7 @@ class StudentPerformanceModel:
         cls,
         model_path: Union[Path, str],
         x_preprocessor_path: Union[Path, str] | None = None,
-        y_preprocessor_path: Union[Path, str] | None = None,
+        # y_preprocessor_path: Union[Path, str] | None = None,
     ):
         """
         Load model and optional preprocessors from disk (joblib .joblib files).
@@ -55,16 +55,16 @@ class StudentPerformanceModel:
                 if x_preprocessor_path
                 else None
             )
-            y_proc = (
-                joblib.load(y_preprocessor_path)
-                if y_preprocessor_path
-                else None
-            )
+            # y_proc = (
+            #     joblib.load(y_preprocessor_path)
+            #     if y_preprocessor_path
+            #     else None
+            # )
 
             return cls(
                 model=model,
                 x_preprocessor=x_proc,
-                y_preprocessor=y_proc,
+                # y_preprocessor=y_proc,
             )
 
         except Exception as e:
@@ -76,7 +76,7 @@ class StudentPerformanceModel:
         cls,
         model: Any,
         x_preprocessor: Any | None = None,
-        y_preprocessor: Any | None = None,
+        # y_preprocessor: Any | None = None,
     ):
         """
         Construct directly from in-memory model and preprocessor objects.
@@ -85,7 +85,7 @@ class StudentPerformanceModel:
             return cls(
                 model=model,
                 x_preprocessor=x_preprocessor,
-                y_preprocessor=y_preprocessor,
+                # y_preprocessor=y_preprocessor,
             )
         except Exception as e:
             logger.exception("Failed to build inference model from objects.")

@@ -1,9 +1,0 @@
-experiment_id: '0'
-run_id: 033209be98ad45739a64e38098066a44
-mean_absolute_error: 0.7087502339836754
-mean_squared_error: 0.7970445688444286
-root_mean_squared_error: 0.8927735260660615
-r2: 0.2330406746490229
-adjusted_r2: 0.19680637581354377
-median_absolute_error: 0.5972440361414624
-explained_variance_score: 0.23428520518190488

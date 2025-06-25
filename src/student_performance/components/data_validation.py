@@ -114,6 +114,15 @@ class DataValidation:
             self.critical_checks.schema_is_match = False
             raise StudentPerformanceError(e, logger) from e
 
+    def __remove_id_column(self) -> None:
+        try:
+            if "id" in self.df.columns:
+                logger.info("Removing 'id' column from ingested data.")
+                self.df.drop(columns=["id"], inplace=True)
+        except Exception as e:
+            logger.exception("Failed to remove 'id' column.")
+            raise StudentPerformanceError(e, logger) from e
+
     def __check_schema_structure(self) -> None:
         try:
             logger.info("Performing schema structure check.")
@@ -318,6 +327,7 @@ class DataValidation:
             else:
                 self.__check_schema_structure()
 
+            self.__remove_id_column()
             self.__check_missing_values()
             self.__check_duplicates()
             self.__check_categorical_values()
