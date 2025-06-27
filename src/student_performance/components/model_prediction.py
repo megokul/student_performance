@@ -41,7 +41,7 @@ class ModelPrediction:
                 logger.info("Loading inference model from S3.")
                 with self.backup_handler as handler:
                     self.inference_model: StudentPerformanceModel = handler.load_object(
-                        self.prediction_config.inference_model_s3_uri
+                        self.prediction_config.inference_model_s3_uri,
                     )
             else:
                 raise StudentPerformanceError(

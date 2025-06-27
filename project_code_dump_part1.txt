@@ -1,0 +1,1251 @@
+--- CODE DUMP | PART 1 of 4 ---
+
+
+================================================================================
+# PY FILE: app.py
+================================================================================
+
+from flask import Flask, request, jsonify, render_template
+from pathlib import Path
+import numpy as np
+import pandas as pd
+from src.student_performance.config.configuration import ConfigurationManager
+from src.student_performance.components.model_prediction import ModelPrediction
+from src.student_performance.dbhandler.s3_handler import S3Handler
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+app = Flask(__name__)
+
+# Initialize once at app startup
+try:
+    config_manager = ConfigurationManager()
+    prediction_config = config_manager.get_model_prediction_config()
+    s3_handler = S3Handler(config_manager.get_s3_handler_config()) if prediction_config.s3_enabled else None
+    predictor = ModelPrediction(prediction_config, backup_handler=s3_handler)
+except Exception as e:
+    logger.exception("Failed to initialize model prediction system.")
+    raise e
+
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    try:
+        data = request.get_json()
+        if data is None or "input" not in data:
+            return jsonify({"error": "Missing 'input' key in JSON payload."}), 400
+
+        # List of expected columns in correct order (same as training)
+        expected_columns = [
+            "gender",
+            "race_ethnicity",
+            "parental_level_of_education",
+            "lunch",
+            "test_preparation_course",
+        ]
+
+        #  Directly convert to DataFrame
+        input_values = data["input"]
+
+        # Ensure it's a list of lists (batch of inputs)
+        if isinstance(input_values[0], str):
+            input_values = [input_values]  # single record wrapped into batch
+
+        input_df = pd.DataFrame(input_values, columns=expected_columns)
+
+        # Predict using DataFrame
+        predictions = predictor.predict(input_df)
+        predictor.save_predictions(predictions)
+
+        return jsonify({
+            "predictions": predictions.tolist()
+        }), 200
+
+    except StudentPerformanceError as spe:
+        logger.error("StudentPerformanceError during prediction.", exc_info=True)
+        return jsonify({"error": str(spe)}), 500
+
+    except Exception as e:
+        logger.exception("Unexpected error in /predict endpoint.")
+        return jsonify({"error": str(e)}), 500
+
+
+
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+
+================================================================================
+# PY FILE: debug.py
+================================================================================
+
+from src.student_performance.pipeline.training_pipeline import TrainingPipeline
+from dotenv import load_dotenv
+load_dotenv()
+
+if __name__ == "__main__":
+    pipeline = TrainingPipeline()
+    pipeline.run_pipeline()
+    print("shivaneee!!!")
+
+================================================================================
+# PY FILE: main.py
+================================================================================
+
+from src.student_performance.pipeline.training_pipeline import TrainingPipeline
+from dotenv import load_dotenv
+load_dotenv()
+
+if __name__ == "__main__":
+    pipeline = TrainingPipeline()
+    pipeline.run_pipeline()
+    print("shivaneee!!!")
+
+================================================================================
+# PY FILE: project_dump.py
+================================================================================
+
+import os
+import math
+
+EXCLUDE_DIRS = {'.venv', 'venv', '__pycache__', '.github', '.git', '.idea', '.vscode', 'build', 'dist', '.mypy_cache'}
+INCLUDE_YAML_FILES = {'config.yaml', 'params.yaml', 'schema.yaml', 'templates.yaml'}
+BASE_OUTPUT_FILE = "project_code_dump_part"
+SUMMARY_FILE = "project_code_dump_index.txt"
+STRUCTURE_FILE = "project_structure.txt"
+
+
+def is_valid_directory(dirname):
+    return not any(part in EXCLUDE_DIRS for part in dirname.split(os.sep))
+
+
+def print_directory_tree(start_path: str, indent: str = "", exclude_dirs=None, out_lines=None) -> list:
+    if exclude_dirs is None:
+        exclude_dirs = EXCLUDE_DIRS
+    if out_lines is None:
+        out_lines = []
+
+    try:
+        items = sorted(os.listdir(start_path))
+    except PermissionError:
+        return out_lines
+
+    for item in items:
+        item_path = os.path.join(start_path, item)
+        if os.path.isdir(item_path):
+            if item in exclude_dirs:
+                continue
+            out_lines.append(f"{indent}📁 {item}/")
+            print_directory_tree(item_path, indent + "    ", exclude_dirs, out_lines)
+        else:
+            out_lines.append(f"{indent}📄 {item}")
+    return out_lines
+
+
+def list_target_files(root_dir):
+    py_files = []
+    yaml_files = []
+
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        dirnames[:] = [d for d in dirnames if is_valid_directory(os.path.join(dirpath, d))]
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+            rel_path = os.path.relpath(full_path, root_dir)
+
+            if filename.endswith('.py'):
+                py_files.append((rel_path, full_path))
+            elif filename in INCLUDE_YAML_FILES:
+                yaml_files.append((rel_path, full_path))
+
+    return sorted(py_files), sorted(yaml_files)
+
+
+def chunk_list(data, num_chunks):
+    chunk_size = math.ceil(len(data) / num_chunks)
+    return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+
+def dump_project_code_in_parts(root_dir='.', num_parts=1):
+    py_files, yaml_files = list_target_files(root_dir)
+    tree_lines = print_directory_tree(root_dir, out_lines=[])
+    total_files = py_files + yaml_files
+
+    if not total_files:
+        print("❌ No .py or relevant .yaml files found.")
+        return
+
+    # Save project structure once
+    with open(STRUCTURE_FILE, 'w', encoding='utf-8') as struct_file:
+        struct_file.write(f"📦 Project Structure of: {os.path.abspath(root_dir)}\n\n")
+        struct_file.write("\n".join(tree_lines))
+    print(f"✅ Project structure saved to: {os.path.abspath(STRUCTURE_FILE)}")
+
+    file_chunks = chunk_list(total_files, num_parts)
+    summary_lines = []
+
+    for i, chunk in enumerate(file_chunks, start=1):
+        part_filename = f"{BASE_OUTPUT_FILE}{i}.txt"
+        with open(part_filename, 'w', encoding='utf-8') as out_file:
+            out_file.write(f"--- CODE DUMP | PART {i} of {num_parts} ---\n\n")
+
+            for rel_path, full_path in chunk:
+                summary_lines.append(f"{part_filename}: {rel_path}")
+                out_file.write(f"\n{'=' * 80}\n")
+                file_type = "PY FILE" if rel_path.endswith('.py') else "YAML FILE"
+                out_file.write(f"# {file_type}: {rel_path}\n")
+                out_file.write(f"{'=' * 80}\n\n")
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        out_file.write(content.strip() + "\n")
+                except Exception as e:
+                    out_file.write(f"Error reading {rel_path}: {e}\n")
+
+        print(f"✅ Dumped part {i} to: {os.path.abspath(part_filename)}")
+
+    # Write summary file
+    with open(SUMMARY_FILE, 'w', encoding='utf-8') as f:
+        f.write("📄 File-to-Part Mapping\n\n")
+        for line in summary_lines:
+            f.write(line + "\n")
+
+    print(f"\n📝 Summary index saved to: {os.path.abspath(SUMMARY_FILE)}")
+
+
+if __name__ == "__main__":
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+    try:
+        num_parts = int(input("Enter number of parts to split the dump into: ").strip())
+        if num_parts < 1:
+            raise ValueError
+    except ValueError:
+        print("❌ Invalid input. Please enter a positive integer.")
+    else:
+        dump_project_code_in_parts(ROOT_DIR, num_parts)
+
+================================================================================
+# PY FILE: project_template.py
+================================================================================
+
+import os
+from pathlib import Path
+import logging
+
+# ==============================
+# 🔹 LOGGING SETUP
+# ==============================
+
+# ✅ Define the directory where logs will be stored
+log_dir = "logs"
+
+# ✅ Define the log file name and full path
+log_filepath = os.path.join(log_dir, 'directorygen_logs.log')
+
+# ✅ Define the format for log messages
+log_format = '[%(asctime)s] - %(levelname)s - %(module)s - %(message)s'
+
+def setup_logging():
+    """
+    Sets up a custom logger:
+    - Creates the `logs/` directory if it doesn't exist.
+    - Configures log messages to be written to both a file and the console.
+    - Uses append mode (`"a"`) so logs persist across multiple runs.
+    - Ensures handlers are not added multiple times.
+    - Logger name: `directory_builder` (used for all logging in this script).
+    
+    Returns:
+        logging.Logger: Custom logger instance.
+    """
+
+    # ✅ Ensure the log directory exists before creating the log file
+    os.makedirs(log_dir, exist_ok=True)
+
+    # ✅ Create a custom logger (separate from the root logger)
+    logger = logging.getLogger('directory_builder')
+
+    # ✅ Set the logger level to DEBUG (captures all log levels)
+    logger.setLevel(logging.DEBUG)
+
+    # ✅ Prevent adding duplicate handlers
+    if not logger.hasHandlers():
+        formatter = logging.Formatter(log_format)  # ✅ Define the log message format
+
+        # ✅ Create a File Handler (logs INFO and above)
+        file_handler = logging.FileHandler(log_filepath, mode='a')  # Append mode ("a")
+        file_handler.setFormatter(formatter)  # Apply the log format
+
+        # ✅ Create a Stream Handler (logs DEBUG and above to console)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)  # Apply the log format
+
+        # ✅ Add handlers to the logger
+        logger.addHandler(file_handler)
+        logger.addHandler(stream_handler)
+
+    return logger  # ✅ Return the configured logger
+
+# ✅ Initialize the logger
+logger = setup_logging()
+
+
+
+# ==============================
+# 🔹 PROJECT SETUP
+# ==============================
+
+# ✅ Define the project name (used in file paths)
+project_name = input("Enter the project name: ")
+
+# ✅ List of files and directories to be created in the project structure
+list_of_files = [
+    # 🔹 GitHub workflows (for CI/CD setup)
+    ".github/workflows/.gitkeep",  
+    
+    # 🔹 Source Code Structure
+    f"src/{project_name}/__init__.py",  # Main package initializer
+    f"src/{project_name}/components/__init__.py",  # Components submodule initializer
+    f"src/{project_name}/utils/__init__.py",  # Utilities submodule initializer
+    f"src/{project_name}/utils/core.py",  # Core utility functions
+    f"src/{project_name}/config/__init__.py",  # Configuration submodule
+    f"src/{project_name}/config/configuration.py",  # Configuration handling script
+    f"src/{project_name}/pipeline/__init__.py",  # Pipeline processing module
+    f"src/{project_name}/entity/__init__.py",  # Entity-related module
+    f"src/{project_name}/entity/config_entity.py",  # Configuration entity class
+    f"src/{project_name}/constants/__init__.py",  # Constants module
+
+    # 🔹 Configuration and Parameter Files
+    "config/config.yaml",  # YAML file for configuration settings
+    "params.yaml",  # YAML file for parameter tuning
+    "schema.yaml",  # YAML file for data schema definition
+
+    # 🔹 Project Execution and Deployment
+    "main.py",  # Main entry point of the project
+    "Dockerfile",  # Dockerfile for containerization
+    "setup.py",  # Setup script for packaging
+    "requirements.txt",  # Requirements file for Python dependencies
+
+    # 🔹 Research and Web Components
+    "research/research.ipynb",  # Jupyter notebook for exploratory research
+    "templates/index.html",  # HTML template file (for a web component)
+
+    # 🔹 Backend API
+    "app.py"  # Flask or FastAPI backend application script
+]
+
+
+# ==============================
+# 🔹 DIRECTORY & FILE CREATION
+# ==============================
+
+def create_file_structure(file_list):
+    """
+    Creates directories and files based on the given list.
+    
+    - If a directory does not exist, it is created.
+    - If a file does not exist or is empty, it is created.
+    - Logs every operation to track what is being created.
+
+    Parameters:
+        file_list (list): List of file paths to be created.
+    """
+
+    for filepath in file_list:
+        filepath = Path(filepath)  # ✅ Convert string path to a `Path` object
+        filedir, filename = os.path.split(filepath)  # ✅ Extract directory and filename separately
+
+        # ✅ Ensure the parent directory exists before creating the file
+        if filedir:
+            os.makedirs(filedir, exist_ok=True)  # ✅ Create directory if it does not exist
+            logger.info(f"Creating the directory '{filedir}' for file: '{filename}'")
+
+        # ✅ Check if the file does not exist or is empty, then create it
+        if not filepath.exists() or filepath.stat().st_size == 0:
+            with open(filepath, 'w'):  # ✅ Create an empty file
+                pass  # No content is added, just initializing the file
+            logger.info(f"Creating empty file: '{filepath}'")  # ✅ Log file creation
+        else:
+            logger.info(f"'{filepath}' already exists")  # ✅ Log if the file already exists
+
+# ✅ Run the file creation function
+create_file_structure(list_of_files)
+
+================================================================================
+# PY FILE: setup.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\components\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\components\data_ingestion.py
+================================================================================
+
+import numpy as np
+import pandas as pd
+
+from src.student_performance.entity.config_entity import DataIngestionConfig
+from src.student_performance.entity.artifact_entity import DataIngestionArtifact
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.utils.core import save_to_csv
+from src.student_performance.dbhandler.base_handler import DBHandler
+
+
+class DataIngestion:
+    def __init__(
+        self,
+        ingestion_config: DataIngestionConfig,
+        source_handler: DBHandler,
+        backup_handler: DBHandler = None,
+    ):
+        try:
+            self.ingestion_config = ingestion_config
+            self.source_handler = source_handler
+            self.backup_handler = backup_handler
+        except Exception as e:
+            logger.exception("Failed to initialize DataIngestion class.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __fetch_raw_data(self) -> pd.DataFrame:
+        try:
+            with self.source_handler as handler:
+                df = handler.load_from_source()
+                logger.info(f"Fetched {len(df)} raw rows from data source.")
+                return df
+        except Exception as e:
+            logger.exception("Failed to fetch raw data from source.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        try:
+            df_cleaned = df.drop(columns=["_id"], errors="ignore").copy()
+            df_cleaned.replace({"na": np.nan}, inplace=True)
+            logger.info("Raw DataFrame cleaned successfully.")
+            return df_cleaned
+        except Exception as e:
+            logger.exception("Failed to clean raw DataFrame.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def run_ingestion(self) -> DataIngestionArtifact:
+        try:
+            logger.info("========== Starting Data Ingestion ==========")
+
+            # Step 1: Fetch raw data
+            raw_df = self.__fetch_raw_data()
+
+            # Step 2: Clean raw data
+            ingested_df = self.__clean_dataframe(raw_df)
+
+            raw_s3_uri = dvc_raw_s3_uri = ingested_s3_uri = None
+
+            # Step 3: Save locally if enabled
+            if self.ingestion_config.local_enabled:
+                logger.info("Saving raw and ingested data locally")
+                save_to_csv(raw_df, self.ingestion_config.raw_filepath, label="Raw Data")
+                save_to_csv(raw_df, self.ingestion_config.dvc_raw_filepath, label="Raw Data (DVC)")
+                save_to_csv(ingested_df, self.ingestion_config.ingested_filepath, label="Ingested Data")
+
+            # Step 4: Stream to S3 if enabled
+            if self.ingestion_config.s3_enabled and self.backup_handler:
+                logger.info("Streaming raw and ingested data to S3")
+                with self.backup_handler as handler:
+                    raw_s3_uri = handler.stream_csv(raw_df, self.ingestion_config.raw_filepath.as_posix())
+                    dvc_raw_s3_uri = handler.stream_csv(raw_df, self.ingestion_config.dvc_raw_filepath.as_posix())
+                    ingested_s3_uri = handler.stream_csv(ingested_df, self.ingestion_config.ingested_filepath.as_posix())
+
+            logger.info("========== Data Ingestion Completed ==========")
+
+            return DataIngestionArtifact(
+                raw_filepath=self.ingestion_config.raw_filepath if self.ingestion_config.local_enabled else None,
+                dvc_raw_filepath=self.ingestion_config.dvc_raw_filepath if self.ingestion_config.local_enabled else None,
+                ingested_filepath=self.ingestion_config.ingested_filepath if self.ingestion_config.local_enabled else None,
+                raw_s3_uri=raw_s3_uri,
+                dvc_raw_s3_uri=dvc_raw_s3_uri,
+                ingested_s3_uri=ingested_s3_uri,
+            )
+
+        except Exception as e:
+            logger.exception("Data ingestion pipeline execution failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\components\data_transformation.py
+================================================================================
+
+from pathlib import Path
+from typing import Tuple
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+from src.student_performance.entity.config_entity import DataTransformationConfig
+from src.student_performance.entity.artifact_entity import DataValidationArtifact, DataTransformationArtifact
+from src.student_performance.logging import logger
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.utils.core import read_csv, save_object, save_array
+from src.student_performance.data_processors.preprocessor_builder import PreprocessorBuilder
+from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.constants.constants import (
+    X_TRAIN_LABEL, Y_TRAIN_LABEL,
+    X_VAL_LABEL, Y_VAL_LABEL,
+    X_TEST_LABEL, Y_TEST_LABEL,
+)
+from box import ConfigBox
+
+
+class DataTransformation:
+    def __init__(
+        self,
+        transformation_config: DataTransformationConfig,
+        validation_artifact: DataValidationArtifact,
+        backup_handler: DBHandler | None = None,
+    ):
+        try:
+            logger.info("Initializing DataTransformation component.")
+            self.transformation_config = transformation_config
+            self.validation_artifact = validation_artifact
+            self.backup_handler = backup_handler
+
+            self.df = self._load_validated_data(validation_artifact)
+            logger.info("Validated dataset loaded successfully with shape: %s", self.df.shape)
+
+        except Exception as e:
+            logger.exception("Failed to initialize DataTransformation.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _load_validated_data(self, validation_artifact: DataValidationArtifact) -> pd.DataFrame:
+        try:
+            if self.transformation_config.local_enabled and validation_artifact.validated_filepath:
+                logger.info("Loading validated data from local path: %s", validation_artifact.validated_filepath)
+                return read_csv(validation_artifact.validated_filepath)
+
+            if self.transformation_config.s3_enabled and validation_artifact.validated_s3_uri and self.backup_handler:
+                logger.info("Loading validated data from S3 URI: %s", validation_artifact.validated_s3_uri)
+                return self.backup_handler.load_csv(validation_artifact.validated_s3_uri)
+
+            raise ValueError("No valid validated data source found.")
+        except Exception as e:
+            logger.exception("Failed to load validated data.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _split_features_and_target(self) -> Tuple[pd.DataFrame, pd.Series]:
+        try:
+            logger.info("Splitting features and target column: '%s'", self.transformation_config.target_column)
+            X = self.df.drop(columns=self.transformation_config.target_column)
+            y = self.df[self.transformation_config.target_column]
+            logger.info("Feature shape: %s | Target shape: %s", X.shape, y.shape)
+            return X, y
+        except Exception as e:
+            logger.exception("Failed to split features and target.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _split_data(self, X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+        try:
+            params = self.transformation_config.transformation_params.data_split
+            stratify = y if params.stratify else None
+
+            logger.info("Splitting into training and temp sets with train_size=%.2f", params.train_size)
+            X_train, X_temp, y_train, y_temp = train_test_split(
+                X, y,
+                train_size=params.train_size,
+                stratify=stratify,
+                random_state=params.random_state,
+            )
+
+            test_ratio = params.test_size / (params.test_size + params.val_size)
+            logger.info("Splitting temp set into validation and test with test_ratio=%.2f", test_ratio)
+            X_val, X_test, y_val, y_test = train_test_split(
+                X_temp, y_temp,
+                test_size=test_ratio,
+                stratify=(y_temp if params.stratify else None),
+                random_state=params.random_state,
+            )
+
+            logger.info("Final splits — Train: %s | Val: %s | Test: %s", X_train.shape, X_val.shape, X_test.shape)
+            return X_train, X_val, X_test, y_train, y_val, y_test
+        except Exception as e:
+            logger.exception("Failed to split data into train/val/test.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _save_preprocessors(self, x_proc, y_proc) -> ConfigBox:
+        result = ConfigBox({
+            "x_preprocessor": {"local": None, "s3": None},
+            "y_preprocessor": {"local": None, "s3": None},
+        })
+        try:
+            if self.transformation_config.local_enabled:
+                logger.info("Saving X and Y preprocessors locally.")
+                save_object(x_proc, self.transformation_config.x_preprocessor_filepath, label="X Preprocessor Pipeline")
+                result.x_preprocessor.local = self.transformation_config.x_preprocessor_filepath
+
+                save_object(y_proc, self.transformation_config.y_preprocessor_filepath, label="Y Preprocessor Pipeline")
+                result.y_preprocessor.local = self.transformation_config.y_preprocessor_filepath
+
+            if self.transformation_config.s3_enabled and self.backup_handler:
+                logger.info("Streaming X and Y preprocessors to S3.")
+                with self.backup_handler as handler:
+                    result.x_preprocessor.s3 = handler.stream_object(x_proc, self.transformation_config.x_preprocessor_s3_key)
+                    result.y_preprocessor.s3 = handler.stream_object(y_proc, self.transformation_config.y_preprocessor_s3_key)
+
+            return result
+        except Exception as e:
+            logger.exception("Failed to save preprocessor pipelines.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _save_arrays(self, X_train, X_val, X_test, y_train, y_val, y_test) -> ConfigBox:
+        result = ConfigBox({
+            "X_train": {"local": None, "s3": None},
+            "y_train": {"local": None, "s3": None},
+            "X_val":   {"local": None, "s3": None},
+            "y_val":   {"local": None, "s3": None},
+            "X_test":  {"local": None, "s3": None},
+            "y_test":  {"local": None, "s3": None},
+        })
+        try:
+            if self.transformation_config.local_enabled:
+                logger.info("Saving transformed arrays locally.")
+                to_save = [
+                    ("X_train", X_train, self.transformation_config.x_train_filepath, self.transformation_config.x_train_dvc_filepath, X_TRAIN_LABEL),
+                    ("y_train", y_train, self.transformation_config.y_train_filepath, self.transformation_config.y_train_dvc_filepath, Y_TRAIN_LABEL),
+                    ("X_val", X_val, self.transformation_config.x_val_filepath, self.transformation_config.x_val_dvc_filepath, X_VAL_LABEL),
+                    ("y_val", y_val, self.transformation_config.y_val_filepath, self.transformation_config.y_val_dvc_filepath, Y_VAL_LABEL),
+                    ("X_test", X_test, self.transformation_config.x_test_filepath, self.transformation_config.x_test_dvc_filepath, X_TEST_LABEL),
+                    ("y_test", y_test, self.transformation_config.y_test_filepath, self.transformation_config.y_test_dvc_filepath, Y_TEST_LABEL),
+                ]
+                for key, array, local_path, dvc_path, label in to_save:
+                    logger.info("Saving %s | Shape: %s", label, array.shape)
+                    save_array(array, local_path, dvc_path, label=label)
+                    result[key]["local"] = local_path
+
+            if self.transformation_config.s3_enabled and self.backup_handler:
+                logger.info("Streaming arrays to S3.")
+                to_stream = [
+                    ("X_train", X_train, self.transformation_config.x_train_s3_key),
+                    ("y_train", y_train, self.transformation_config.y_train_s3_key),
+                    ("X_val", X_val, self.transformation_config.x_val_s3_key),
+                    ("y_val", y_val, self.transformation_config.y_val_s3_key),
+                    ("X_test", X_test, self.transformation_config.x_test_s3_key),
+                    ("y_test", y_test, self.transformation_config.y_test_s3_key),
+                    ("X_train", X_train, self.transformation_config.x_train_dvc_s3_key),
+                    ("y_train", y_train, self.transformation_config.y_train_dvc_s3_key),
+                    ("X_val", X_val, self.transformation_config.x_val_dvc_s3_key),
+                    ("y_val", y_val, self.transformation_config.y_val_dvc_s3_key),
+                    ("X_test", X_test, self.transformation_config.x_test_dvc_s3_key),
+                    ("y_test", y_test, self.transformation_config.y_test_dvc_s3_key),
+                ]
+                with self.backup_handler as handler:
+                    for key, array, s3_key in to_stream:
+                        uri = handler.stream_npy(array, s3_key)
+                        result[key]["s3"] = uri
+
+            return result
+        except Exception as e:
+            logger.exception("Failed to save transformed datasets.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def run_transformation(self) -> DataTransformationArtifact:
+        try:
+            logger.info("========== Starting Data Transformation ==========")
+
+            X, y = self._split_features_and_target()
+            X_train, X_val, X_test, y_train, y_val, y_test = self._split_data(X, y)
+
+            builder = PreprocessorBuilder(
+                steps=self.transformation_config.transformation_params.steps,
+                methods=self.transformation_config.transformation_params.methods,
+            )
+            x_proc, y_proc = builder.build()
+
+            logger.info("Fitting X and Y preprocessing pipelines.")
+            X_train = x_proc.fit_transform(X_train)
+            X_val = x_proc.transform(X_val)
+            X_test = x_proc.transform(X_test)
+
+            y_train = y_proc.fit_transform(y_train)
+            y_val = y_proc.transform(y_val)
+            y_test = y_proc.transform(y_test)
+
+            # Convert sparse matrices if necessary
+            X_train = X_train.toarray() if hasattr(X_train, "toarray") else X_train
+            X_val = X_val.toarray() if hasattr(X_val, "toarray") else X_val
+            X_test = X_test.toarray() if hasattr(X_test, "toarray") else X_test
+
+            prep_locs = self._save_preprocessors(x_proc, y_proc)
+            array_locs = self._save_arrays(X_train, X_val, X_test, y_train, y_val, y_test)
+
+            logger.info("========== Data Transformation Completed ==========")
+
+            return DataTransformationArtifact(
+                x_train_filepath=array_locs.X_train.local,
+                y_train_filepath=array_locs.y_train.local,
+                x_val_filepath=array_locs.X_val.local,
+                y_val_filepath=array_locs.y_val.local,
+                x_test_filepath=array_locs.X_test.local,
+                y_test_filepath=array_locs.y_test.local,
+                x_preprocessor_filepath=prep_locs.x_preprocessor.local,
+                y_preprocessor_filepath=prep_locs.y_preprocessor.local,
+                x_train_s3_uri=array_locs.X_train.s3,
+                y_train_s3_uri=array_locs.y_train.s3,
+                x_val_s3_uri=array_locs.X_val.s3,
+                y_val_s3_uri=array_locs.y_val.s3,
+                x_test_s3_uri=array_locs.X_test.s3,
+                y_test_s3_uri=array_locs.y_test.s3,
+                x_preprocessor_s3_uri=prep_locs.x_preprocessor.s3,
+                y_preprocessor_s3_uri=prep_locs.y_preprocessor.s3,
+            )
+        except Exception as e:
+            logger.exception("Data transformation process failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\components\data_validation.py
+================================================================================
+
+import hashlib
+from pathlib import Path
+
+import pandas as pd
+from box import ConfigBox
+from scipy.stats import ks_2samp
+
+from src.student_performance.entity.config_entity import DataValidationConfig
+from src.student_performance.entity.artifact_entity import (
+    DataIngestionArtifact,
+    DataValidationArtifact,
+)
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.utils.core import read_csv, save_to_csv, save_to_yaml
+from src.student_performance.utils.timestamp import get_utc_timestamp
+from src.student_performance.dbhandler.base_handler import DBHandler
+
+
+class DataValidation:
+    def __init__(
+        self,
+        validation_config: DataValidationConfig,
+        ingestion_artifact: DataIngestionArtifact,
+        backup_handler: DBHandler | None = None,
+    ):
+        try:
+            logger.info("Initializing DataValidation component.")
+            self.validation_config = validation_config
+            self.schema = validation_config.schema
+            self.params = validation_config.validation_params
+            self.backup_handler = backup_handler
+            self.timestamp = get_utc_timestamp()
+
+            self.df = self._load_ingested_data(ingestion_artifact)
+            self.base_df = None
+            if (
+                self.params.drift_detection.enabled
+                and validation_config.dvc_validated_filepath.exists()
+            ):
+                self.base_df = read_csv(validation_config.dvc_validated_filepath)
+
+            self.report = ConfigBox(validation_config.report_template.copy())
+            self.critical_checks = ConfigBox({
+                k: False
+                for k in self.report.check_results.critical_checks.keys()
+            })
+            self.non_critical_checks = ConfigBox({
+                k: False
+                for k in self.report.check_results.non_critical_checks.keys()
+            })
+
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
+
+    def _load_ingested_data(
+        self,
+        ingestion_artifact: DataIngestionArtifact,
+    ) -> pd.DataFrame:
+        try:
+            if (
+                self.validation_config.local_enabled
+                and ingestion_artifact.ingested_filepath
+            ):
+                logger.info(
+                    f"Loading ingested data from local: "
+                    f"{ingestion_artifact.ingested_filepath}"
+                )
+                return read_csv(ingestion_artifact.ingested_filepath)
+
+            if (
+                self.validation_config.s3_enabled
+                and ingestion_artifact.ingested_s3_uri
+                and self.backup_handler
+            ):
+                logger.info(
+                    f"Loading ingested data from S3: "
+                    f"{ingestion_artifact.ingested_s3_uri}"
+                )
+                return self.backup_handler.load_csv(
+                    ingestion_artifact.ingested_s3_uri
+                )
+
+            raise ValueError("No valid ingested data source found.")
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
+
+    def __check_schema_hash(self) -> None:
+        try:
+            logger.info("Performing schema hash check.")
+            expected = "|".join(
+                f"{col}:{dtype}"
+                for col, dtype in sorted(self.schema.columns.items())
+            )
+            expected_hash = hashlib.md5(expected.encode()).hexdigest()
+
+            current = "|".join(
+                f"{col}:{self.df[col].dtype}"
+                for col in sorted(self.df.columns)
+            )
+            current_hash = hashlib.md5(current.encode()).hexdigest()
+
+            self.critical_checks.schema_is_match = (
+                expected_hash == current_hash
+            )
+            msg = (
+                "Schema hash check passed."
+                if self.critical_checks.schema_is_match
+                else "Schema hash mismatch."
+            )
+            logger.info(msg)
+        except Exception as e:
+            logger.exception("Schema hash check failed.")
+            self.critical_checks.schema_is_match = False
+            raise StudentPerformanceError(e, logger) from e
+
+    def __remove_id_column(self) -> None:
+        try:
+            if "id" in self.df.columns:
+                logger.info("Removing 'id' column from ingested data.")
+                self.df.drop(columns=["id"], inplace=True)
+        except Exception as e:
+            logger.exception("Failed to remove 'id' column.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __check_schema_structure(self) -> None:
+        try:
+            logger.info("Performing schema structure check.")
+            expected_cols = set(self.schema.columns.keys()) | {
+                self.schema.target_column
+            }
+            actual_cols = set(self.df.columns)
+            self.critical_checks.schema_is_match = (
+                expected_cols == actual_cols
+            )
+            if not self.critical_checks.schema_is_match:
+                logger.error(
+                    f"Schema structure mismatch: "
+                    f"expected={expected_cols}, actual={actual_cols}"
+                )
+        except Exception as e:
+            logger.exception("Schema structure check failed.")
+            self.critical_checks.schema_is_match = False
+            raise StudentPerformanceError(e, logger) from e
+
+    def __check_missing_values(self) -> None:
+        try:
+            logger.info("Checking for missing values.")
+            missing = self.df.isnull().sum().to_dict()
+            missing["timestamp"] = self.timestamp
+
+            missing_path = self.validation_config.missing_report_filepath
+            missing_key = self.validation_config.missing_report_s3_key
+
+            if self.validation_config.local_enabled:
+                save_to_yaml(missing, missing_path, label="Missing Value Report")
+            if self.validation_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    handler.stream_yaml(missing, missing_key)
+
+            self.non_critical_checks.no_missing_values = not any(
+                v > 0 for v in missing.values() if isinstance(v, (int, float))
+            )
+        except Exception as e:
+            logger.exception("Missing value check failed.")
+            self.non_critical_checks.no_missing_values = False
+            raise StudentPerformanceError(e, logger) from e
+
+    def __check_duplicates(self) -> None:
+        try:
+            logger.info("Checking for duplicate rows.")
+            before = len(self.df)
+            self.df = self.df.drop_duplicates()
+            removed = before - len(self.df)
+
+            report = {"duplicate_rows_removed": removed, "timestamp": self.timestamp}
+            dup_path = self.validation_config.duplicates_report_filepath
+            dup_key = self.validation_config.duplicates_report_s3_key
+
+            if self.validation_config.local_enabled:
+                save_to_yaml(report, dup_path, label="Duplicates Report")
+            if self.validation_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    handler.stream_yaml(report, dup_key)
+
+            self.non_critical_checks.no_duplicate_rows = (removed == 0)
+        except Exception as e:
+            logger.exception("Duplicate check failed.")
+            self.non_critical_checks.no_duplicate_rows = False
+            raise StudentPerformanceError(e, logger) from e
+
+    def __check_categorical_values(self) -> None:
+        try:
+            logger.info("Checking categorical values.")
+            allowed = getattr(self.schema, "allowed_values", {}) or {}
+            violations: dict = {}
+
+            for col, values in allowed.items():
+                if col not in self.df.columns:
+                    continue
+                actual = set(self.df[col].dropna().unique())
+                unexpected = actual - set(values)
+                if unexpected:
+                    violations[col] = {
+                        "unexpected_values": sorted(unexpected),
+                        "expected_values": values,
+                    }
+
+            report = {
+                "violations_found": bool(violations),
+                "details": violations,
+                "timestamp": self.timestamp,
+            }
+            cat_path = self.validation_config.categorical_report_filepath
+            cat_key = self.validation_config.categorical_report_s3_key
+
+            if self.validation_config.local_enabled:
+                save_to_yaml(report, cat_path, label="Categorical Values Report")
+            if self.validation_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    handler.stream_yaml(report, cat_key)
+
+            self.non_critical_checks.categorical_values_match = not bool(violations)
+        except Exception as e:
+            logger.exception("Categorical value check failed.")
+            self.non_critical_checks.categorical_values_match = False
+            raise StudentPerformanceError(e, logger) from e
+
+    def __check_data_drift(self) -> None:
+        try:
+            logger.info("Performing data drift check.")
+            report: dict = {
+                "drift_check_performed": bool(self.base_df is not None),
+                "drift_method": self.params.drift_detection.method,
+                "columns": {},
+                "timestamp": self.timestamp,
+            }
+
+            if self.base_df is not None:
+                drift_detected = False
+                for col in self.df.columns:
+                    if col in self.base_df.columns:
+                        _, p = ks_2samp(self.base_df[col], self.df[col])
+                        drift = p < self.params.drift_detection.p_value_threshold
+                        report["columns"][col] = {"p_value": float(p), "drift": drift}
+                        if drift:
+                            drift_detected = True
+                report["drift_detected"] = drift_detected
+                self.critical_checks.no_data_drift = not drift_detected
+            else:
+                report["reason"] = "Base dataset not found, skipping drift."
+                self.critical_checks.no_data_drift = True
+
+            drift_path = self.validation_config.drift_report_filepath
+            drift_key = self.validation_config.drift_report_s3_key
+
+            if self.validation_config.local_enabled:
+                save_to_yaml(report, drift_path, label="Drift Report")
+            if self.validation_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    handler.stream_yaml(report, drift_key)
+
+        except Exception as e:
+            logger.exception("Data drift check failed.")
+            self.critical_checks.no_data_drift = False
+            raise StudentPerformanceError(e, logger) from e
+
+    def __generate_report(self) -> None:
+        try:
+            logger.info("Generating final validation report.")
+            self.report.timestamp = self.timestamp
+            self.report.validation_status = all(self.critical_checks.values())
+            self.report.critical_passed = self.report.validation_status
+            self.report.non_critical_passed = all(self.non_critical_checks.values())
+            self.report.schema_check_type = self.params.schema_check.method
+            if self.params.drift_detection.enabled:
+                self.report.drift_check_method = self.params.drift_detection.method
+
+            self.report.check_results.critical_checks = self.critical_checks.to_dict()
+            self.report.check_results.non_critical_checks = self.non_critical_checks.to_dict()
+
+            report_path = self.validation_config.validation_report_filepath
+            report_key = self.validation_config.validation_report_s3_key
+
+            if self.validation_config.local_enabled:
+                save_to_yaml(self.report.to_dict(), report_path, label="Validation Report")
+            if self.validation_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    handler.stream_yaml(self.report.to_dict(), report_key)
+
+        except Exception as e:
+            logger.exception("Failed to generate validation report.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __save_artifacts(self) -> ConfigBox:
+        validated_local = self.validation_config.validated_filepath
+        validated_dvc = self.validation_config.dvc_validated_filepath
+        validated_s3: str | None = None
+        validated_dvc_s3: str | None = None
+
+        if self.validation_config.local_enabled:
+            save_to_csv(
+                self.df,
+                validated_local,
+                validated_dvc,
+                label="Validated Data",
+            )
+
+        if self.validation_config.s3_enabled and self.backup_handler:
+            key = self.validation_config.validated_s3_key
+            dvc_key = self.validation_config.dvc_validated_s3_key
+            with self.backup_handler as handler:
+                validated_s3 = handler.stream_csv(self.df, key)
+                validated_dvc_s3 = handler.stream_csv(self.df, dvc_key)
+
+        return ConfigBox({
+            "Validated": {"local": validated_local, "s3": validated_s3},
+            "Validated_DVC": {"local": validated_dvc, "s3": validated_dvc_s3},
+        })
+
+    def run_validation(self) -> DataValidationArtifact:
+        try:
+            logger.info("========== Starting Data Validation ==========")
+
+            if self.params.schema_check.method == "hash":
+                self.__check_schema_hash()
+            else:
+                self.__check_schema_structure()
+
+            self.__remove_id_column()
+            self.__check_missing_values()
+            self.__check_duplicates()
+            self.__check_categorical_values()
+
+            if self.params.drift_detection.enabled:
+                self.__check_data_drift()
+
+            self.__generate_report()
+
+            passed = all(self.critical_checks.values())
+            saved_paths = None
+            if passed:
+                saved_paths = self.__save_artifacts()
+
+            logger.info("========== Data Validation Completed ==========")
+            return DataValidationArtifact(
+                validated_filepath=saved_paths.Validated.local if saved_paths else None,
+                validated_s3_uri=saved_paths.Validated.s3 if saved_paths else None,
+                validated_dvc=saved_paths.Validated_DVC.local if saved_paths else None,
+                validated_dvc_s3_uri=saved_paths.Validated_DVC.s3 if saved_paths else None,
+                validation_status=passed,
+            )
+
+        except Exception as e:
+            logger.exception("Data validation process failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\components\model_evaluation.py
+================================================================================
+
+from typing import Any, Dict
+import numpy as np
+from pathlib import Path
+import yaml
+from datetime import datetime, timezone
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    median_absolute_error,
+    explained_variance_score,
+    r2_score,
+)
+import mlflow
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.utils.core import (
+    save_to_yaml,
+    load_array,
+    load_object,
+)
+from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.entity.config_entity import ModelEvaluationConfig
+from src.student_performance.entity.artifact_entity import (
+    ModelTrainerArtifact,
+    ModelEvaluationArtifact,
+)
+
+
+class ModelEvaluation:
+    def __init__(
+        self,
+        evaluation_config: ModelEvaluationConfig,
+        trainer_artifact: ModelTrainerArtifact,
+        backup_handler: DBHandler | None = None,
+    ):
+        try:
+            logger.info("Initializing ModelEvaluation.")
+            self.evaluation_config = evaluation_config
+            self.trainer_artifact = trainer_artifact
+            self.backup_handler = backup_handler
+
+            self._load_data()
+
+            if self.evaluation_config.tracking.mlflow.enabled:
+                run_id = self.trainer_artifact.run_id
+                if not run_id:
+                    raise StudentPerformanceError("Trainer run_id is missing; cannot resume MLflow run.", logger)
+                logger.info(f"Resuming MLflow run {run_id}")
+                mlflow.start_run(run_id=run_id)
+
+        except Exception as e:
+            logger.exception("Failed to initialize ModelEvaluation.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _load_data(self):
+        try:
+            if self.evaluation_config.local_enabled:
+                logger.info("Loading model and data from local paths.")
+
+                if not self.trainer_artifact.trained_model_filepath:
+                    raise StudentPerformanceError("Trained model local path missing.", logger)
+                self.model = load_object(self.trainer_artifact.trained_model_filepath, label="Trained Model")
+
+                if not self.trainer_artifact.x_test_filepath:
+                    raise StudentPerformanceError("X_test local path missing.", logger)
+                self.x_test = load_array(self.trainer_artifact.x_test_filepath, label="X_test")
+
+                if not self.trainer_artifact.y_test_filepath:
+                    raise StudentPerformanceError("y_test local path missing.", logger)
+                self.y_test = load_array(self.trainer_artifact.y_test_filepath, label="y_test")
+
+            elif self.evaluation_config.s3_enabled and self.backup_handler:
+                logger.info("Loading model and data from S3 URIs.")
+                with self.backup_handler as handler:
+                    if not self.trainer_artifact.trained_model_s3_uri:
+                        raise StudentPerformanceError("Trained model S3 URI missing.", logger)
+                    self.model = handler.load_object(self.trainer_artifact.trained_model_s3_uri)
+
+                    if not self.trainer_artifact.x_test_s3_uri:
+                        raise StudentPerformanceError("X_test S3 URI missing.", logger)
+                    self.x_test = handler.load_npy(self.trainer_artifact.x_test_s3_uri)
+
+                    if not self.trainer_artifact.y_test_s3_uri:
+                        raise StudentPerformanceError("y_test S3 URI missing.", logger)
+                    self.y_test = handler.load_npy(self.trainer_artifact.y_test_s3_uri)
+
+            else:
+                raise StudentPerformanceError("Neither local nor S3 loading is enabled or configured properly.", logger)
+
+        except Exception as e:
+            logger.exception("Failed during data loading in ModelEvaluation.")
+            raise StudentPerformanceError(e, logger) from e
+
+    @staticmethod
+    def compute_adjusted_r2(r2: float, n_samples: int, n_features: int) -> float:
+        if n_samples <= n_features + 1:
+            return np.nan
+        return 1 - (1 - r2) * ((n_samples - 1) / (n_samples - n_features - 1))
+
+    def _save_report(self, metrics: dict[str, float]) -> tuple[Path, str]:
+        # build report with only Python scalars
+        report = {
+            "experiment_id": self.trainer_artifact.experiment_id,
+            "run_id":         self.trainer_artifact.run_id,
+            **metrics,
+        }
+        # convert any numpy scalars to built-ins
+        def _make_pure_python(obj):
+            if isinstance(obj, dict):
+                return {k: _make_pure_python(v) for k, v in obj.items()}
+            if hasattr(obj, "item") and callable(obj.item):
+                return obj.item()
+            return obj
+
+        report = _make_pure_python(report)
+
+        local_path = None
+        s3_uri = None
+
+        if self.evaluation_config.local_enabled:
+            local_path = self.evaluation_config.evaluation_report_filepath
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            # use safe_dump
+            with open(local_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(report, f, sort_keys=False)
+
+        if self.evaluation_config.s3_enabled and self.backup_handler:
+            with self.backup_handler as handler:
+                # re-use your existing stream_yaml which already converts NumPy types
+                s3_uri = handler.stream_yaml(report, self.evaluation_config.evaluation_report_s3_key)
+
+        return local_path, s3_uri
+
+    def run_evaluation(self) -> ModelEvaluationArtifact:
+        try:
+            logger.info("Starting model evaluation.")
+            y_pred = self.model.predict(self.x_test)
+            n_samples, n_features = self.x_test.shape
+
+            eval_metrics = self.evaluation_config.eval_metrics.metrics
+            results: Dict[str, float] = {}
+
+            for metric in eval_metrics:
+                if metric == "mean_absolute_error":
+                    results["mean_absolute_error"] = mean_absolute_error(self.y_test, y_pred)
+                elif metric == "mean_squared_error":
+                    results["mean_squared_error"] = mean_squared_error(self.y_test, y_pred)
+                elif metric == "root_mean_squared_error":
+                    results["root_mean_squared_error"] = np.sqrt(mean_squared_error(self.y_test, y_pred))
+                elif metric == "median_absolute_error":
+                    results["median_absolute_error"] = median_absolute_error(self.y_test, y_pred)
+                elif metric == "explained_variance_score":
+                    results["explained_variance_score"] = explained_variance_score(self.y_test, y_pred)
+                elif metric == "r2":
+                    results["r2"] = r2_score(self.y_test, y_pred)
+                elif metric == "adjusted_r2":
+                    r2_val = r2_score(self.y_test, y_pred)
+                    results["adjusted_r2"] = self.compute_adjusted_r2(r2_val, n_samples, n_features)
+                else:
+                    logger.warning(f"Unsupported metric: {metric}")
+
+            logger.info(f"Evaluation results: {results}")
+
+            if self.evaluation_config.tracking.mlflow.enabled:
+                for k, v in results.items():
+                    mlflow.log_metric(f"test_{k}", v)
+
+            return self._save_report(results)
+
+        except Exception as e:
+            logger.exception("Model evaluation failed.")
+            raise StudentPerformanceError(e, logger) from e

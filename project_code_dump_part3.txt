@@ -1,0 +1,1563 @@
+--- CODE DUMP | PART 3 of 4 ---
+
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\scaler_factory.py
+================================================================================
+
+from typing import Optional
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class ScalerFactory:
+    """
+    Factory to build scaling pipelines for numerical features.
+    """
+
+    _SUPPORTED_METHODS = {
+        "standard_scaler": StandardScaler,
+        "minmax": MinMaxScaler,
+        "robust": RobustScaler,
+    }
+
+    @staticmethod
+    @ensure_annotations
+    def get_scaler_pipeline(
+        method: str,
+        params: Optional[dict] = None,
+        is_target: bool = False
+    ) -> Pipeline:
+        try:
+            if method not in ScalerFactory._SUPPORTED_METHODS:
+                raise ValueError(f"Unsupported scaler method: {method}")
+
+            scaler_cls = ScalerFactory._SUPPORTED_METHODS[method]
+            scaler = scaler_cls(**(params or {}))
+
+            return Pipeline(steps=[("scaler", scaler)])
+
+        except Exception as e:
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\base_handler.py
+================================================================================
+
+from abc import ABC, abstractmethod
+from pathlib import Path
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class DBHandler(ABC):
+    """
+    Abstract base class for all database/storage handlers.
+    Enables unified behavior across PostgreSQL, MongoDB, CSV, etc.
+    """
+
+    def __enter__(self) -> "DBHandler":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        try:
+            self.close()
+        except Exception as e:
+            msg = "Error closing DBHandler."
+            raise StudentPerformanceError(e, msg) from e
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
+    def load_from_source(self) -> pd.DataFrame:
+        pass
+
+    def load_from_csv(self, source: Path) -> pd.DataFrame:
+        try:
+            df = pd.read_csv(source)
+            logger.info(f"DataFrame loaded from CSV: {source}")
+            return df
+        except Exception as e:
+            msg = f"Failed to load DataFrame from CSV: '{source}'"
+            raise StudentPerformanceError(e, msg) from e
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\postgres_dbhandler.py
+================================================================================
+
+import psycopg2
+from psycopg2 import sql
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.entity.config_entity import PostgresDBHandlerConfig
+from box import ConfigBox
+
+
+class PostgresDBHandler(DBHandler):
+    def __init__(self, config: PostgresDBHandlerConfig) -> None:
+        logger.info("Initializing PostgresDBHandler")
+        self.config = config
+        self._connection: psycopg2.extensions.connection | None = None
+        self._cursor: psycopg2.extensions.cursor | None = None
+
+    def _connect(self) -> None:
+        logger.info("Attempting to connect to PostgreSQL")
+        if not self._connection or self._connection.closed:
+            try:
+                self._connection = psycopg2.connect(
+                    host=self.config.host,
+                    port=self.config.port,
+                    dbname=self.config.dbname,
+                    user=self.config.user,
+                    password=self.config.password,
+                )
+                self._cursor = self._connection.cursor()
+                logger.info("Successfully connected to PostgreSQL")
+            except Exception as e:
+                msg = "Failed to establish PostgreSQL connection"
+                raise StudentPerformanceError(e, msg) from e
+
+    def close(self) -> None:
+        if self._cursor:
+            self._cursor.close()
+        if self._connection:
+            self._connection.close()
+            logger.info("PostgreSQL connection closed")
+
+    def ping(self) -> None:
+        logger.info("Pinging PostgreSQL")
+        try:
+            self._connect()
+            logger.info("Executing ping query")
+            self._cursor.execute("SELECT 1;")
+            self._cursor.fetchone()
+            logger.info("PostgreSQL connection successful (ping passed).")
+        except Exception as e:
+            msg = "PostgreSQL ping failed"
+            raise StudentPerformanceError(e, msg) from e
+        logger.info("PostgreSQL ping completed")
+
+    def load_from_source(self) -> pd.DataFrame:
+        logger.info(f"Loading data from PostgreSQL table: {self.config.table_name}")
+        try:
+            self._connect()
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.config.table_name))
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            df = pd.read_sql_query(query.as_string(self._connection), self._connection)
+            logger.info(f"DataFrame loaded from PostgreSQL table: {self.config.table_name}")
+            return df
+        except Exception as e:
+            msg = f"Failed to load data from PostgreSQL table: {self.config.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+
+    def get_table_list(self) -> list[str]:
+        """
+        Get a list of all tables in the PostgreSQL database.
+
+        Returns:
+            list[str]: A list of table names.
+
+        Raises:
+            StudentPerformanceError: If listing tables fails.
+        """
+        logger.info("Retrieving list of tables")
+        try:
+            self._connect()
+            query = sql.SQL("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_type = 'BASE TABLE';
+            """)
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            self._cursor.execute(query)
+            tables = [table[0] for table in self._cursor.fetchall()]
+            logger.info("Successfully retrieved list of tables.")
+            return tables
+        except Exception as e:
+            msg = "Failed to retrieve list of tables"
+            raise StudentPerformanceError(e, msg) from e
+
+    def create_table_from_schema(self) -> None:
+        """
+        Create a PostgreSQL table if it doesn't exist using schema from ConfigBox.
+
+        Args:
+            table_name (str): The name of the table to create.
+            schema (ConfigBox): Parsed schema.yaml with dot-access support.
+
+        Raises:
+            StudentPerformanceError: If table creation fails.
+        """
+        logger.info(f"Creating table from schema: {self.config.table_name}")
+        try:
+            self._connect()
+
+            table_name = self.config.table_name
+
+            # Check if table exists
+            query = sql.SQL("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_name = {}
+                );
+            """).format(sql.Literal(table_name))
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            self._cursor.execute(query)
+            table_exists = self._cursor.fetchone()[0]
+
+            if table_exists:
+                logger.info(f"Table '{table_name}' already exists.")
+                return
+
+            # Access columns via dot-notation
+            table_schema = self.config.table_schema[table_name].columns
+
+            column_definitions = []
+
+            for col_name, col_def in table_schema.items():
+                col_type = col_def.type
+                constraints = col_def.get("constraints", {})
+
+                column_sql = f"{col_name} {col_type}"
+
+                # ENUM-style value check
+                if "allowed_values" in constraints:
+                    allowed = ", ".join("'{}'".format(val.replace("'", "''")) for val in constraints.allowed_values)
+                    column_sql += f" CHECK ({col_name} IN ({allowed}))"
+
+                # Numeric bounds
+                if "min" in constraints and "max" in constraints:
+                    column_sql += f" CHECK ({col_name} BETWEEN {constraints.min} AND {constraints.max})"
+                elif "min" in constraints:
+                    column_sql += f" CHECK ({col_name} >= {constraints.min})"
+                elif "max" in constraints:
+                    column_sql += f" CHECK ({col_name} <= {constraints.max})"
+
+                column_definitions.append(column_sql)
+
+            # Final CREATE query
+            create_query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {} (
+                    {}
+                );
+            """).format(
+                sql.Identifier(table_name),
+                sql.SQL(", ").join(map(sql.SQL, column_definitions))
+            )
+            logger.info(f"Executing query: {create_query.as_string(self._connection)}")
+            self._cursor.execute(create_query)
+            self._connection.commit()
+            logger.info(f"Table '{table_name}' created.")
+
+        except Exception as e:
+            msg = f"Failed to create table: '{table_name}'"
+            raise StudentPerformanceError(e, msg) from e
+        logger.info(f"Finished creating table from schema: {self.config.table_name}")
+
+    def insert_data_from_csv(self) -> None:
+        """
+        Insert data from the configured CSV file into the PostgreSQL table.
+
+        Raises:
+            StudentPerformanceError: If data insertion fails.
+        """
+        logger.info(f"Inserting data from CSV into table: {self.config.table_name}")
+        try:
+            self._connect()
+            
+            # Read the CSV file into a Pandas DataFrame
+            csv_filepath = self.config.input_data_filepath
+            logger.info(f"Reading CSV file: {csv_filepath}")
+            df = pd.read_csv(csv_filepath)
+            
+            # Get the table name
+            table_name = self.config.table_name
+            
+            # Define the SQL INSERT query
+            columns = ', '.join(df.columns)
+            values = ', '.join(['%s'] * len(df.columns))
+            insert_query = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
+                sql.Identifier(table_name),
+                sql.SQL(columns),
+                sql.SQL(values)
+            )
+            
+            # Execute the INSERT query for each row in the DataFrame
+            logger.info("Inserting data into table")
+            for _, row in df.iterrows():
+                self._cursor.execute(insert_query, row.tolist())
+            
+            # Commit the changes to the database
+            self._connection.commit()
+            
+        except Exception as e:
+            msg = f"Failed to insert data from CSV into table: {self.config.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+        logger.info(f"Successfully inserted data from CSV into table: {self.config.table_name}")
+        logger.info(f"Finished inserting data from CSV into table: {self.config.table_name}")
+
+    def read_data_to_df(self) -> pd.DataFrame:
+        """
+        Reads data from the PostgreSQL table into a Pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A Pandas DataFrame containing the data from the table.
+
+        Raises:
+            StudentPerformanceError: If reading data fails.
+        """
+        logger.info(f"Reading data from PostgreSQL table: {self.config.table_name}")
+        try:
+            self._connect()
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.config.table_name))
+            logger.info(f"Executing query: {query.as_string(self._connection)}")
+            df = pd.read_sql_query(query.as_string(self._connection), self._connection)
+            logger.info(f"Successfully read data from PostgreSQL table: {self.config.table_name}")
+            logger.info(f"Finished reading data from PostgreSQL table: {self.config.table_name}")
+            return df
+        except Exception as e:
+            msg = f"Failed to read data from PostgreSQL table: {self.config.table_name}"
+            raise StudentPerformanceError(e, msg) from e
+
+================================================================================
+# PY FILE: src\student_performance\dbhandler\s3_handler.py
+================================================================================
+
+from pathlib import Path
+import os
+import boto3
+from botocore.exceptions import ClientError
+import pandas as pd
+import numpy as np
+from io import StringIO
+from io import BytesIO
+import joblib
+import yaml
+
+from src.student_performance.entity.config_entity import S3HandlerConfig
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.dbhandler.base_handler import DBHandler
+
+
+class S3Handler(DBHandler):
+    """
+    AWS S3 Handler for file, directory, and DataFrame (CSV) operations.
+    """
+
+    def __init__(self, config: S3HandlerConfig) -> None:
+        try:
+            self.config = config
+            self._client = boto3.client("s3", region_name=self.config.aws_region)
+            logger.info(
+                "S3Handler initialized for bucket '%s' in region '%s'",
+                self.config.bucket_name,
+                self.config.aws_region,
+            )
+        except Exception as e:
+            logger.exception("Failed to initialize S3 client.")
+            raise StudentPerformanceError(e, logger) from e
+    def __enter__(self):
+        logger.info("S3Handler context entered")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        logger.info("S3Handler context exited")
+
+
+    def close(self) -> None:
+        logger.info("S3Handler.close() called. No persistent connection to close.")
+
+    def load_from_source(self) -> pd.DataFrame:
+        raise NotImplementedError("S3Handler does not support load_from_source directly.")
+
+    def upload_file(self, local_path: Path, s3_key: str) -> None:
+        """
+        Upload a local file to S3.
+        """
+        try:
+            if not local_path.is_file():
+                raise FileNotFoundError(f"Local file not found: {local_path.as_posix()}")
+
+            self._client.upload_file(
+                Filename=str(local_path),
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+            )
+            logger.info(
+                "Uploaded: %s -> s3://%s/%s",
+                local_path.as_posix(),
+                self.config.bucket_name,
+                s3_key,
+            )
+        except ClientError as e:
+            logger.error("AWS ClientError during file upload: %s", str(e))
+            raise StudentPerformanceError(e, logger) from e
+        except Exception as e:
+            logger.error("Unexpected error during file upload: %s", str(e))
+            raise StudentPerformanceError(e, logger) from e
+
+    def sync_directory(self, local_dir: Path, s3_prefix: str) -> None:
+        """
+        Recursively uploads a directory to S3.
+        """
+        try:
+            if not local_dir.is_dir():
+                raise NotADirectoryError(f"Local directory not found: {local_dir.as_posix()}")
+
+            logger.info(
+                "Starting directory sync: %s -> s3://%s/%s",
+                local_dir.as_posix(),
+                self.config.bucket_name,
+                s3_prefix,
+            )
+
+            for root, _, files in os.walk(local_dir):
+                for file in files:
+                    local_file_path = Path(root) / file
+                    relative_path = local_file_path.relative_to(local_dir)
+                    remote_key = f"{s3_prefix}/{relative_path.as_posix()}"
+                    self.upload_file(local_file_path, remote_key)
+
+            logger.info(
+                "Directory successfully synced: %s -> s3://%s/%s",
+                local_dir.as_posix(),
+                self.config.bucket_name,
+                s3_prefix,
+            )
+        except Exception as e:
+            logger.error("Directory sync to S3 failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def load_csv(self, s3_uri: str) -> pd.DataFrame:
+        """
+        Load a CSV file from S3 into a DataFrame.
+        """
+        try:
+            bucket, key = self._parse_s3_uri(s3_uri)
+            obj = self._client.get_object(Bucket=bucket, Key=key)
+            return pd.read_csv(obj["Body"])
+        except Exception as e:
+            logger.exception("Failed to load CSV from S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def stream_csv(self, df: pd.DataFrame, s3_key: str) -> str:
+        """
+        Streams a DataFrame as CSV to S3 (in-memory, no local write).
+        """
+        try:
+            buf = StringIO()
+            df.to_csv(buf, index=False)
+            buf.seek(0)
+            self._client.put_object(
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+                Body=buf.getvalue().encode("utf-8")
+            )
+            s3_uri = f"s3://{self.config.bucket_name}/{s3_key}"
+            logger.info(f"Streamed CSV to: {s3_uri}")
+            return s3_uri
+        except Exception as e:
+            logger.exception("Failed to stream CSV to S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def stream_yaml(self, data: dict, s3_key: str) -> str:
+        """
+        Streams a Python dict (or list) as YAML to S3 (in-memory, no local write),
+        converting any NumPy types into native Python scalars first.
+        """
+        def _convert(obj):
+            if isinstance(obj, dict):
+                return { _convert(k): _convert(v) for k, v in obj.items() }
+            if isinstance(obj, list):
+                return [ _convert(v) for v in obj ]
+            if isinstance(obj, tuple):
+                return tuple(_convert(v) for v in obj)
+            if isinstance(obj, np.generic):
+                return obj.item()
+            return obj
+
+        try:
+            python_data = _convert(data)
+
+            buf = StringIO()
+            yaml.safe_dump(python_data, buf)
+            buf.seek(0)
+
+            self._client.put_object(
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+                Body=buf.getvalue().encode("utf-8"),
+            )
+
+            s3_uri = f"s3://{self.config.bucket_name}/{s3_key}"
+            logger.info(f"Streamed YAML to: {s3_uri}")
+            return s3_uri
+
+        except Exception as e:
+            logger.exception("Failed to stream YAML to S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+
+    def _parse_s3_uri(self, s3_uri: str) -> tuple[str, str]:
+        """
+        Parses s3://bucket/key into (bucket, key).
+        """
+        if not s3_uri.startswith("s3://"):
+            raise ValueError(f"Invalid S3 URI: {s3_uri}")
+        parts = s3_uri[5:].split("/", 1)
+        if len(parts) != 2:
+            raise ValueError(f"Invalid S3 URI: {s3_uri}")
+        return parts[0], parts[1]
+
+    def stream_object(self, obj: object, s3_key: str) -> str:
+        """
+        Serialize a Python object (e.g. a fitted pipeline) via joblib
+        and stream it to S3 under key=s3_key (in‐memory, no temp file).
+        Returns the s3:// URI.
+        """
+        try:
+            buf = BytesIO()
+            # dump into the buffer
+            joblib.dump(obj, buf)
+            buf.seek(0)
+
+            self._client.put_object(
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+                Body=buf.read(),
+            )
+
+            uri = f"s3://{self.config.bucket_name}/{s3_key}"
+            logger.info("Streamed object to: %s", uri)
+            return uri
+
+        except Exception as e:
+            logger.exception("Failed to stream object to S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def stream_npy(self, array: np.ndarray, s3_key: str) -> str:
+        """
+        Serialize a NumPy array in .npy format into memory and upload it to S3.
+        """
+        try:
+            buf = BytesIO()
+            # write the .npy header + data
+            np.save(buf, array, allow_pickle=False)
+            buf.seek(0)
+
+            self._client.put_object(
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+                Body=buf.read(),
+            )
+
+            uri = f"s3://{self.config.bucket_name}/{s3_key}"
+            logger.info("Streamed .npy to: %s", uri)
+            return uri
+
+        except Exception as e:
+            logger.exception("Failed to stream .npy to S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def load_npy(self, s3_uri: str) -> np.ndarray:
+        """
+        Load a .npy‐serialized NumPy array from S3 into memory.
+        
+        Args:
+            s3_uri:  The full S3 URI (e.g. "s3://bucket/key.npy").
+        Returns:
+            The deserialized NumPy array.
+        """
+        try:
+            # parse out bucket and key
+            bucket, key = self._parse_s3_uri(s3_uri)
+            # fetch the object
+            resp = self._client.get_object(Bucket=bucket, Key=key)
+            data = resp["Body"].read()
+            # load into a BytesIO and then np.load
+            buf = BytesIO(data)
+            buf.seek(0)
+            arr = np.load(buf, allow_pickle=False)
+            logger.info("Loaded .npy from S3: %s", s3_uri)
+            return arr
+
+        except Exception as e:
+            logger.exception("Failed to load .npy from S3.")
+            raise StudentPerformanceError(e, logger) from e
+        
+    def load_object(self, s3_uri: str) -> object:
+        """
+        Load a joblib‐serialized object from S3 into memory.
+
+        Args:
+            s3_uri: The S3 URI where the object was stored (e.g. "s3://bucket/key.joblib").
+
+        Returns:
+            The deserialized Python object.
+        """
+        try:
+            # parse bucket & key
+            bucket, key = self._parse_s3_uri(s3_uri)
+
+            # fetch from S3
+            resp = self._client.get_object(Bucket=bucket, Key=key)
+            data = resp['Body'].read()
+
+            # load via joblib from an in‐memory buffer
+            buf = BytesIO(data)
+            buf.seek(0)
+            obj = joblib.load(buf)
+
+            logger.info("Loaded object from S3: %s", s3_uri)
+            return obj
+
+        except Exception as e:
+            logger.exception("Failed to load object from S3: %s", s3_uri)
+            raise StudentPerformanceError(e, logger) from e
+
+    def stream_df_as_csv(self, df: pd.DataFrame, s3_key: str) -> str:
+        """
+        Convert a pandas DataFrame to CSV in memory and stream it to S3.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to stream.
+            s3_key (str): The S3 key under which the CSV will be saved.
+
+        Returns:
+            str: The full s3:// URI where the CSV is stored.
+        """
+        try:
+            buf = BytesIO()
+            df.to_csv(buf, index=False)
+            buf.seek(0)
+
+            self._client.put_object(
+                Bucket=self.config.bucket_name,
+                Key=s3_key,
+                Body=buf.read(),
+                ContentType='text/csv',
+            )
+
+            uri = f"s3://{self.config.bucket_name}/{s3_key}"
+            logger.info("Streamed DataFrame as CSV to: %s", uri)
+            return uri
+
+        except Exception as e:
+            logger.exception("Failed to stream DataFrame as CSV to S3.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\entity\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\entity\artifact_entity.py
+================================================================================
+
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class DataIngestionArtifact:
+    raw_filepath: Path | None = None
+    dvc_raw_filepath: Path | None = None
+    ingested_filepath: Path | None = None
+    raw_s3_uri: str | None = None
+    dvc_raw_s3_uri: str | None = None
+    ingested_s3_uri: str | None = None
+
+    def __repr__(self) -> str:
+        raw_local_str = self.raw_filepath.as_posix() if self.raw_filepath else "None"
+        dvc_raw_local_str = self.dvc_raw_filepath.as_posix() if self.dvc_raw_filepath else "None"
+        ingested_local_str = self.ingested_filepath.as_posix() if self.ingested_filepath else "None"
+
+        raw_s3_str = self.raw_s3_uri if self.raw_s3_uri else "None"
+        dvc_raw_s3_str = self.dvc_raw_s3_uri if self.dvc_raw_s3_uri else "None"
+        ingested_s3_str = self.ingested_s3_uri if self.ingested_s3_uri else "None"
+
+        return (
+            "\nData Ingestion Artifact:\n"
+            f"  - Raw Local Path:        '{raw_local_str}'\n"
+            f"  - DVC Raw Local Path:    '{dvc_raw_local_str}'\n"
+            f"  - Ingested Local Path:   '{ingested_local_str}'\n"
+            f"  - Raw S3 URI:            '{raw_s3_str}'\n"
+            f"  - DVC Raw S3 URI:        '{dvc_raw_s3_str}'\n"
+            f"  - Ingested S3 URI:       '{ingested_s3_str}'"
+        )
+
+
+@dataclass(frozen=True)
+class DataValidationArtifact:
+    validated_filepath: Path | None = None
+    validated_dvc:     Path | None = None
+    validated_s3_uri:  str  | None = None
+    validated_dvc_s3_uri: str | None = None
+    validation_status: bool = False
+
+    def __repr__(self) -> str:
+        local = self.validated_filepath.as_posix() if self.validated_filepath else "None"
+        dvc_local = self.validated_dvc.as_posix() if self.validated_dvc else "None"
+        s3 = self.validated_s3_uri if self.validated_s3_uri else "None"
+        dvc_s3 = self.validated_dvc_s3_uri if self.validated_dvc_s3_uri else "None"
+
+        return (
+            "\nData Validation Artifact:\n"
+            f"  - Validated Local Path:     '{local}'\n"
+            f"  - Validated DVC Local Path: '{dvc_local}'\n"
+            f"  - Validated S3 URI:         '{s3}'\n"
+            f"  - Validated DVC S3 URI:     '{dvc_s3}'\n"
+            f"  - Validation Status:        {self.validation_status}"
+        )
+
+
+@dataclass(frozen=True)
+class DataTransformationArtifact:
+    x_train_filepath: Path | None = None
+    y_train_filepath: Path | None = None
+    x_val_filepath: Path | None = None
+    y_val_filepath: Path | None = None
+    x_test_filepath: Path | None = None
+    y_test_filepath: Path | None = None
+    x_preprocessor_filepath: Path | None = None
+    y_preprocessor_filepath: Path | None = None
+
+    x_train_s3_uri: str | None = None
+    y_train_s3_uri: str | None = None
+    x_val_s3_uri: str | None = None
+    y_val_s3_uri: str | None = None
+    x_test_s3_uri: str | None = None
+    y_test_s3_uri: str | None = None
+    x_preprocessor_s3_uri: str | None = None
+    y_preprocessor_s3_uri: str | None = None
+
+    def __repr__(self) -> str:
+        xt_local = (
+            self.x_train_filepath.as_posix()
+            if self.x_train_filepath
+            else "None"
+        )
+        yt_local = (
+            self.y_train_filepath.as_posix()
+            if self.y_train_filepath
+            else "None"
+        )
+        xv_local = (
+            self.x_val_filepath.as_posix()
+            if self.x_val_filepath
+            else "None"
+        )
+        yv_local = (
+            self.y_val_filepath.as_posix()
+            if self.y_val_filepath
+            else "None"
+        )
+        xts_local = (
+            self.x_test_filepath.as_posix()
+            if self.x_test_filepath
+            else "None"
+        )
+        yts_local = (
+            self.y_test_filepath.as_posix()
+            if self.y_test_filepath
+            else "None"
+        )
+        xp_local = (
+            self.x_preprocessor_filepath.as_posix()
+            if self.x_preprocessor_filepath
+            else "None"
+        )
+        yp_local = (
+            self.y_preprocessor_filepath.as_posix()
+            if self.y_preprocessor_filepath
+            else "None"
+        )
+
+        xt_s3 = self.x_train_s3_uri or "None"
+        yt_s3 = self.y_train_s3_uri or "None"
+        xv_s3 = self.x_val_s3_uri or "None"
+        yv_s3 = self.y_val_s3_uri or "None"
+        xts_s3 = self.x_test_s3_uri or "None"
+        yts_s3 = self.y_test_s3_uri or "None"
+        xp_s3 = self.x_preprocessor_s3_uri or "None"
+        yp_s3 = self.y_preprocessor_s3_uri or "None"
+
+        return (
+            "\nData Transformation Artifact:\n"
+            f"  - X Train Local Path:        '{xt_local}'\n"
+            f"  - Y Train Local Path:        '{yt_local}'\n"
+            f"  - X Val Local Path:          '{xv_local}'\n"
+            f"  - Y Val Local Path:          '{yv_local}'\n"
+            f"  - X Test Local Path:         '{xts_local}'\n"
+            f"  - Y Test Local Path:         '{yts_local}'\n"
+            f"  - X Preprocessor Local Path: '{xp_local}'\n"
+            f"  - Y Preprocessor Local Path: '{yp_local}'\n"
+            f"  - X Train S3 URI:            '{xt_s3}'\n"
+            f"  - Y Train S3 URI:            '{yt_s3}'\n"
+            f"  - X Val S3 URI:              '{xv_s3}'\n"
+            f"  - Y Val S3 URI:              '{yv_s3}'\n"
+            f"  - X Test S3 URI:             '{xts_s3}'\n"
+            f"  - Y Test S3 URI:             '{yts_s3}'\n"
+            f"  - X Preprocessor S3 URI:     '{xp_s3}'\n"
+            f"  - Y Preprocessor S3 URI:     '{yp_s3}'"
+        )
+
+
+@dataclass(frozen=True)
+class ModelTrainerArtifact:
+    trained_model_filepath: Path | None = None
+    training_report_filepath: Path | None = None
+    inference_model_filepath: str | None = None
+
+    x_train_filepath: Path | None = None
+    y_train_filepath: Path | None = None
+    x_val_filepath: Path | None = None
+    y_val_filepath: Path | None = None
+    x_test_filepath: Path | None = None
+    y_test_filepath: Path | None = None
+
+    trained_model_s3_uri: str | None = None
+    training_report_s3_uri: str | None = None
+    inference_model_s3_uri: str | None = None
+
+    x_train_s3_uri: str | None = None
+    y_train_s3_uri: str | None = None
+    x_val_s3_uri: str | None = None
+    y_val_s3_uri: str | None = None
+    x_test_s3_uri: str | None = None
+    y_test_s3_uri: str | None = None
+
+    experiment_id: str | None = None
+    run_id: str | None = None
+
+    def __repr__(self) -> str:
+        tm_local = (
+            self.trained_model_filepath.as_posix()
+            if self.trained_model_filepath
+            else "None"
+        )
+        tr_local = (
+            self.training_report_filepath.as_posix()
+            if self.training_report_filepath
+            else "None"
+        )
+
+        xt_local = (
+            self.x_train_filepath.as_posix()
+            if self.x_train_filepath
+            else "None"
+        )
+        yt_local = (
+            self.y_train_filepath.as_posix()
+            if self.y_train_filepath
+            else "None"
+        )
+        xv_local = (
+            self.x_val_filepath.as_posix()
+            if self.x_val_filepath
+            else "None"
+        )
+        yv_local = (
+            self.y_val_filepath.as_posix()
+            if self.y_val_filepath
+            else "None"
+        )
+        xts_local = (
+            self.x_test_filepath.as_posix()
+            if self.x_test_filepath
+            else "None"
+        )
+        yts_local = (
+            self.y_test_filepath.as_posix()
+            if self.y_test_filepath
+            else "None"
+        )
+
+        tm_s3 = self.trained_model_s3_uri or "None"
+        tr_s3 = self.training_report_s3_uri or "None"
+
+        xt_s3 = self.x_train_s3_uri or "None"
+        yt_s3 = self.y_train_s3_uri or "None"
+        xv_s3 = self.x_val_s3_uri or "None"
+        yv_s3 = self.y_val_s3_uri or "None"
+        xts_s3 = self.x_test_s3_uri or "None"
+        yts_s3 = self.y_test_s3_uri or "None"
+
+        exp = self.experiment_id or "None"
+        run = self.run_id or "None"
+
+        return (
+            "\nModel Trainer Artifact:\n"
+            f"  - Trained Model Local Path:      '{tm_local}'\n"
+            f"  - Training Report Local Path:    '{tr_local}'\n"
+            "\n"
+            f"  - X Train Local Path:            '{xt_local}'\n"
+            f"  - Y Train Local Path:            '{yt_local}'\n"
+            f"  - X Val Local Path:              '{xv_local}'\n"
+            f"  - Y Val Local Path:              '{yv_local}'\n"
+            f"  - X Test Local Path:             '{xts_local}'\n"
+            f"  - Y Test Local Path:             '{yts_local}'\n"
+            "\n"
+            f"  - Trained Model S3 URI:          '{tm_s3}'\n"
+            f"  - Training Report S3 URI:        '{tr_s3}'\n"
+            "\n"
+            f"  - X Train S3 URI:                '{xt_s3}'\n"
+            f"  - Y Train S3 URI:                '{yt_s3}'\n"
+            f"  - X Val S3 URI:                  '{xv_s3}'\n"
+            f"  - Y Val S3 URI:                  '{yv_s3}'\n"
+            f"  - X Test S3 URI:                 '{xts_s3}'\n"
+            f"  - Y Test S3 URI:                 '{yts_s3}'"
+            "\n"
+            f"  - MLflow Experiment ID:          '{exp}'\n"
+            f"  - MLflow Run ID:                 '{run}'"
+        )
+
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class ModelEvaluationArtifact:
+    evaluation_report_filepath: Path | None = None
+    evaluation_report_s3_uri: str | None = None
+    experiment_id: str | None = None
+    run_id: str | None = None
+
+    def __repr__(self) -> str:
+        er_local = (
+            self.evaluation_report_filepath.as_posix()
+            if self.evaluation_report_filepath
+            else "None"
+        )
+        er_s3 = self.evaluation_report_s3_uri or "None"
+        exp = self.experiment_id or "None"
+        run = self.run_id or "None"
+
+        return (
+            "\nModel Evaluation Artifact:\n"
+            f"  - Evaluation Report Local Path:  '{er_local}'\n"
+            f"  - Evaluation Report S3 URI:      '{er_s3}'\n"
+            f"  - MLflow Experiment ID:          '{exp}'\n"
+            f"  - MLflow Run ID:                 '{run}'"
+        )
+
+================================================================================
+# PY FILE: src\student_performance\entity\config_entity.py
+================================================================================
+
+from box import ConfigBox
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List
+
+@dataclass
+class PostgresDBHandlerConfig:
+    root_dir: Path
+    host: str
+    port: int
+    dbname: str
+    user: str
+    password: str
+    table_name: str
+    input_data_filepath: Path
+    table_schema: ConfigBox
+
+    def __post_init__(self):
+        self.root_dir = Path(self.root_dir)
+        self.input_data_filepath = Path(self.input_data_filepath)
+
+    def __repr__(self) -> str:
+        return (
+            "\nPostgres DB Handler Config:\n"
+            f"  - Root Dir:         '{self.root_dir.as_posix()}'\n"
+            f"  - Host:             {self.host}\n"
+            f"  - Port:             {self.port}\n"
+            f"  - Database Name:    {self.dbname}\n"
+            f"  - User:             {self.user}\n"
+            f"  - Password:         {'*' * 8} (hidden)\n"
+            f"  - Table:            {self.table_name}\n"
+            f"  - Input Filepath:   '{self.input_data_filepath.as_posix()}'\n"
+            f"  - Input Filepath:   {'table_schema'} (hidden)\n"
+        )
+
+
+@dataclass
+class S3HandlerConfig:
+    root_dir: Path
+    bucket_name: str
+    aws_region: str
+    local_dir_to_sync: Path
+    s3_artifacts_prefix: str
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.local_dir_to_sync = Path(self.local_dir_to_sync)
+
+    def __repr__(self) -> str:
+        return (
+            "\nS3 Handler Config:\n",
+            f"  - Root Dir:              {self.root_dir}",
+            f"  - Bucket Name:           {self.bucket_name}",
+            f"  - AWS Region:            {self.aws_region}",
+            f"  - Local Dir to Sync:     {self.local_dir_to_sync}",
+            f"  - S3 Artifacts Prefix:   {self.s3_artifacts_prefix}",
+        )
+
+
+@dataclass
+class DataIngestionConfig:
+    root_dir: Path
+    raw_filepath: Path
+    dvc_raw_filepath: Path
+    ingested_filepath: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.raw_filepath = Path(self.raw_filepath)
+        self.dvc_raw_filepath = Path(self.dvc_raw_filepath)
+        self.ingested_filepath = Path(self.ingested_filepath)
+
+    @property
+    def raw_s3_key(self) -> str:
+        return self.raw_filepath.as_posix()
+
+    @property
+    def dvc_raw_s3_key(self) -> str:
+        return self.dvc_raw_filepath.as_posix()
+
+    @property
+    def ingested_s3_key(self) -> str:
+        return self.ingested_filepath.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nData Ingestion Config:",
+            f"  - Root Dir:             {self.root_dir}",
+            f"  - Raw Data Path:        {self.raw_filepath}",
+            f"  - DVC Raw Data Path:    {self.dvc_raw_filepath}",
+            f"  - Ingested Data Path:   {self.ingested_filepath}",
+            f"  - Local Save Enabled:   {self.local_enabled}",
+            f"  - S3 Upload Enabled:    {self.s3_enabled}",
+            f"  - Raw S3 Key:           {self.raw_s3_key}",
+            f"  - DVC Raw S3 Key:       {self.dvc_raw_s3_key}",
+            f"  - Ingested S3 Key:      {self.ingested_s3_key}",
+        ]
+        return "\n".join(parts)
+
+
+@dataclass
+class DataValidationConfig:
+    root_dir: Path
+    validated_filepath: Path
+    dvc_validated_filepath: Path
+
+    missing_report_filepath: Path
+    duplicates_report_filepath: Path
+    drift_report_filepath: Path
+    categorical_report_filepath: Path
+    validation_report_filepath: Path
+
+    schema: ConfigBox
+    report_template: ConfigBox
+    validation_params: ConfigBox
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.validated_filepath = Path(self.validated_filepath)
+        self.dvc_validated_filepath = Path(self.dvc_validated_filepath)
+        self.missing_report_filepath = Path(self.missing_report_filepath)
+        self.duplicates_report_filepath = Path(self.duplicates_report_filepath)
+        self.drift_report_filepath = Path(self.drift_report_filepath)
+        self.categorical_report_filepath = Path(self.categorical_report_filepath)
+        self.validation_report_filepath = Path(self.validation_report_filepath)
+
+    @property
+    def validated_s3_key(self) -> str:
+        return self.validated_filepath.as_posix()
+
+    @property
+    def dvc_validated_s3_key(self) -> str:
+        return self.dvc_validated_filepath.as_posix()
+
+    @property
+    def missing_report_s3_key(self) -> str:
+        return self.missing_report_filepath.as_posix()
+
+    @property
+    def duplicates_report_s3_key(self) -> str:
+        return self.duplicates_report_filepath.as_posix()
+
+    @property
+    def drift_report_s3_key(self) -> str:
+        return self.drift_report_filepath.as_posix()
+
+    @property
+    def categorical_report_s3_key(self) -> str:
+        return self.categorical_report_filepath.as_posix()
+
+    @property
+    def validation_report_s3_key(self) -> str:
+        return self.validation_report_filepath.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nData Validation Config:",
+            f"  - Root Dir:                   {self.root_dir}",
+            f"  - Validated CSV Path:         {self.validated_filepath}",
+            f"  - DVC Validated CSV Path:     {self.dvc_validated_filepath}",
+            f"  - Missing Report Path:        {self.missing_report_filepath}",
+            f"  - Duplicates Report Path:     {self.duplicates_report_filepath}",
+            f"  - Drift Report Path:          {self.drift_report_filepath}",
+            f"  - Categorical Report Path:    {self.categorical_report_filepath}",
+            f"  - Validation Report Path:     {self.validation_report_filepath}",
+            f"  - Local Save Enabled:         {self.local_enabled}",
+            f"  - S3 Upload Enabled:          {self.s3_enabled}",
+            f"  - Validated S3 Key:           {self.validated_s3_key}",
+            f"  - DVC Validated S3 Key:       {self.dvc_validated_s3_key}",
+            f"  - Missing Report S3 Key:      {self.missing_report_s3_key}",
+            f"  - Duplicates Report S3 Key:   {self.duplicates_report_s3_key}",
+            f"  - Drift Report S3 Key:        {self.drift_report_s3_key}",
+            f"  - Categorical Report S3 Key:  {self.categorical_report_s3_key}",
+            f"  - Validation Report S3 Key:   {self.validation_report_s3_key}",
+            f"  - Schema Config:              (hidden)",
+            f"  - Report Template:            (hidden)",
+            f"  - Validation Params:          (hidden)",
+        ]
+        return "\n".join(parts)
+
+
+@dataclass
+class DataTransformationConfig:
+    root_dir: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    target_column: str
+    transformation_params: ConfigBox
+
+    x_train_filepath: Path
+    y_train_filepath: Path
+    x_val_filepath: Path
+    y_val_filepath: Path
+    x_test_filepath: Path
+    y_test_filepath: Path
+
+    x_train_dvc_filepath: Path
+    y_train_dvc_filepath: Path
+    x_val_dvc_filepath: Path
+    y_val_dvc_filepath: Path
+    x_test_dvc_filepath: Path
+    y_test_dvc_filepath: Path
+
+    x_preprocessor_filepath: Path
+    y_preprocessor_filepath: Path
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        for attr in (
+            "x_train_filepath",
+            "y_train_filepath",
+            "x_val_filepath",
+            "y_val_filepath",
+            "x_test_filepath",
+            "y_test_filepath",
+            "x_train_dvc_filepath",
+            "y_train_dvc_filepath",
+            "x_val_dvc_filepath",
+            "y_val_dvc_filepath",
+            "x_test_dvc_filepath",
+            "y_test_dvc_filepath",
+            "x_preprocessor_filepath",
+            "y_preprocessor_filepath",
+        ):
+            setattr(self, attr, Path(getattr(self, attr)))
+
+    @property
+    def x_train_s3_key(self) -> str:
+        return self.x_train_filepath.as_posix()
+
+    @property
+    def y_train_s3_key(self) -> str:
+        return self.y_train_filepath.as_posix()
+
+    @property
+    def x_val_s3_key(self) -> str:
+        return self.x_val_filepath.as_posix()
+
+    @property
+    def y_val_s3_key(self) -> str:
+        return self.y_val_filepath.as_posix()
+
+    @property
+    def x_test_s3_key(self) -> str:
+        return self.x_test_filepath.as_posix()
+
+    @property
+    def y_test_s3_key(self) -> str:
+        return self.y_test_filepath.as_posix()
+
+    @property
+    def x_train_dvc_s3_key(self) -> str:
+        return self.x_train_dvc_filepath.as_posix()
+
+    @property
+    def y_train_dvc_s3_key(self) -> str:
+        return self.y_train_dvc_filepath.as_posix()
+
+    @property
+    def x_val_dvc_s3_key(self) -> str:
+        return self.x_val_dvc_filepath.as_posix()
+
+    @property
+    def y_val_dvc_s3_key(self) -> str:
+        return self.y_val_dvc_filepath.as_posix()
+
+    @property
+    def x_test_dvc_s3_key(self) -> str:
+        return self.x_test_dvc_filepath.as_posix()
+
+    @property
+    def y_test_dvc_s3_key(self) -> str:
+        return self.y_test_dvc_filepath.as_posix()
+
+    @property
+    def x_preprocessor_s3_key(self) -> str:
+        return self.x_preprocessor_filepath.as_posix()
+
+    @property
+    def y_preprocessor_s3_key(self) -> str:
+        return self.y_preprocessor_filepath.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nData Transformation Config:",
+            f"  - Root Dir:                  {self.root_dir}",
+            f"  - Local Save Enabled:        {self.local_enabled}",
+            f"  - S3 Upload Enabled:         {self.s3_enabled}",
+            f"  - Target Column:             {self.target_column}",
+            f"  - X Train Path:              {self.x_train_filepath}",
+            f"  - Y Train Path:              {self.y_train_filepath}",
+            f"  - X Val Path:                {self.x_val_filepath}",
+            f"  - Y Val Path:                {self.y_val_filepath}",
+            f"  - X Test Path:               {self.x_test_filepath}",
+            f"  - Y Test Path:               {self.y_test_filepath}",
+            f"  - X Preprocessor Path:       {self.x_preprocessor_filepath}",
+            f"  - Y Preprocessor Path:       {self.y_preprocessor_filepath}",
+            f"  - X Train S3 Key:            {self.x_train_s3_key}",
+            f"  - Y Train S3 Key:            {self.y_train_s3_key}",
+            f"  - X Val S3 Key:              {self.x_val_s3_key}",
+            f"  - Y Val S3 Key:              {self.y_val_s3_key}",
+            f"  - X Test S3 Key:             {self.x_test_s3_key}",
+            f"  - Y Test S3 Key:             {self.y_test_s3_key}",
+            f"  - X Train DVC S3 Key:        {self.x_train_dvc_s3_key}",
+            f"  - Y Train DVC S3 Key:        {self.y_train_dvc_s3_key}",
+            f"  - X Val DVC S3 Key:          {self.x_val_dvc_s3_key}",
+            f"  - Y Val DVC S3 Key:          {self.y_val_dvc_s3_key}",
+            f"  - X Test DVC S3 Key:         {self.x_test_dvc_s3_key}",
+            f"  - Y Test DVC S3 Key:         {self.y_test_dvc_s3_key}",
+            f"  - X Preprocessor S3 Key:     {self.x_preprocessor_s3_key}",
+            f"  - Y Preprocessor S3 Key:     {self.y_preprocessor_s3_key}",
+            f"  - Transformation Params:     (hidden)",
+            f"  - DVC-tracked Filepaths:     (hidden)",
+        ]
+        return "\n".join(parts)
+
+
+@dataclass
+class ModelTrainerConfig:
+    root_dir: Path
+    trained_model_filepath: Path
+    training_report_filepath: Path
+    inference_model_filepath: Path
+    inference_model_serving_filepath: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    models: List[dict]
+    optimization: ConfigBox
+    tracking: ConfigBox
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.trained_model_filepath = Path(self.trained_model_filepath)
+        self.training_report_filepath = Path(self.training_report_filepath)
+
+    @property
+    def trained_model_s3_key(self) -> str:
+        return self.trained_model_filepath.as_posix()
+
+    @property
+    def training_report_s3_key(self) -> str:
+        return self.training_report_filepath.as_posix()
+
+    @property
+    def inference_model_s3_key(self) -> str:
+        return self.inference_model_filepath.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nModel Trainer Config:",
+            f"  - Root Dir:                  {self.root_dir}",
+            f"  - Trained Model Path:        {self.trained_model_filepath}",
+            f"  - Training Report Path:      {self.training_report_filepath}",
+            f"  - Local Save Enabled:        {self.local_enabled}",
+            f"  - S3 Upload Enabled:         {self.s3_enabled}",
+            f"  - Trained Model S3 Key:      {self.trained_model_s3_key}",
+            f"  - Training Report S3 Key:    {self.training_report_s3_key}",
+            f"  - Models:                    (hidden)",
+            f"  - Optimization:              (hidden)",
+            f"  - Tracking:                  (hidden)",
+        ]
+        return "\n".join(parts)
+
+
+@dataclass
+class ModelEvaluationConfig:
+    root_dir: Path
+    evaluation_report_filepath: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    tracking: ConfigBox
+
+    eval_metrics: ConfigBox
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.evaluation_report_filepath = Path(self.evaluation_report_filepath)
+
+    @property
+    def evaluation_report_s3_key(self) -> str:
+        return self.evaluation_report_filepath.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nModel Evaluation Config:",
+            f"  - Root Dir:                  {self.root_dir}",
+            f"  - Evaluation Report Path:     {self.evaluation_report_filepath}",
+            f"  - Local Save Enabled:         {self.local_enabled}",
+            f"  - S3 Upload Enabled:          {self.s3_enabled}",
+            f"  - Evaluation Report S3 Key:   {self.evaluation_report_s3_key}",
+            f"  - Tracking:                   (hidden)",
+            f"  - Metrics:                    (hidden)",
+        ]
+        return "\n".join(parts)
+
+
+@dataclass
+class ModelPredictionConfig:
+    root_dir: Path
+    inference_model_filepath: Path
+
+    local_enabled: bool
+    s3_enabled: bool
+
+    def __post_init__(self) -> None:
+        self.root_dir = Path(self.root_dir)
+        self.inference_model_filepath = Path(self.inference_model_filepath)
+
+    @property
+    def inference_model_s3_key(self) -> str:
+        return self.inference_model_filepath.as_posix()
+
+    @property
+    def root_s3_key(self) -> str:
+        return self.root_dir.as_posix()
+
+    def __repr__(self) -> str:
+        parts = [
+            "\nModel Prediction Config:",
+            f"  - Root Dir:                  {self.root_dir}",
+            f"  - Inference Model Path:      {self.inference_model_filepath or 'None'}",
+            f"  - Local Save Enabled:        {self.local_enabled}",
+            f"  - S3 Upload Enabled:         {self.s3_enabled}",
+            f"  - Root S3 Key:               {self.root_s3_key}",
+            f"  - Inference Model S3 Key:    {self.inference_model_s3_key or 'None'}",
+        ]
+        return "\n".join(parts)
+
+================================================================================
+# PY FILE: src\student_performance\exception\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\exception\exception.py
+================================================================================
+
+import sys
+from types import TracebackType
+from logging import Logger
+
+
+class StudentPerformanceError(Exception):
+    """
+    Custom exception for the Student Performance project.
+
+    Automatically captures:
+    - Original exception message
+    - Filename and line number from the traceback
+    - Logs the formatted error using an injected logger
+    """
+
+    def __init__(self, error: Exception, logger: Logger) -> None:
+        # Set the core message
+        super().__init__(str(error))
+        self.message: str = str(error)
+        self.logger: Logger = logger
+
+        # Extract traceback info from current exception context
+        _, _, tb = sys.exc_info()
+        tb: TracebackType | None
+
+        # Safely capture line number and file
+        self.line: int | None = tb.tb_lineno if tb and tb.tb_lineno else None
+        self.file: str = tb.tb_frame.f_code.co_filename if tb and tb.tb_frame else "Unknown"
+
+        # Log the error using injected logger with traceback
+        try:
+            self.logger.error(str(self), exc_info=True)
+        except Exception as log_error:
+            print(f"Logging failed inside StudentPerformanceError: {log_error}")
+
+    def __str__(self) -> str:
+        return (
+            f"Error occurred in file [{self.file}], "
+            f"line [{self.line}], "
+            f"message: [{self.message}]"
+        )
+
+================================================================================
+# PY FILE: src\student_performance\inference\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\inference\estimator.py
+================================================================================
+
+import joblib
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Union
+
+from src.student_performance.logging import logger
+from src.student_performance.exception.exception import StudentPerformanceError
+
+
+@dataclass(frozen=True)
+class StudentPerformanceModel:
+    """
+    Wraps a trained model plus its X/Y preprocessors for inference.
+    """
+    model: Any
+    x_preprocessor: Any | None = None
+    # y_preprocessor: Any | None = None
+
+    def predict(self, X):
+        """
+        Apply the X-preprocessor (if any), run model.predict, then
+        inverse-transform via the Y-preprocessor (if any).
+        """
+        try:
+            data = X
+            if self.x_preprocessor is not None:
+                data = self.x_preprocessor.transform(data)
+
+            preds = self.model.predict(data)
+
+            # if self.y_preprocessor is not None:
+            #     preds = self.y_preprocessor.inverse_transform(preds)
+
+            return preds
+
+        except Exception as e:
+            logger.exception("Failed during model prediction.")
+            raise StudentPerformanceError(e, logger) from e
+
+    @classmethod
+    def from_artifacts(
+        cls,
+        model_path: Union[Path, str],
+        x_preprocessor_path: Union[Path, str] | None = None,
+        # y_preprocessor_path: Union[Path, str] | None = None,
+    ):
+        """
+        Load model and optional preprocessors from disk (joblib .joblib files).
+        """
+        try:
+            model = joblib.load(model_path)
+
+            x_proc = (
+                joblib.load(x_preprocessor_path)
+                if x_preprocessor_path
+                else None
+            )
+            # y_proc = (
+            #     joblib.load(y_preprocessor_path)
+            #     if y_preprocessor_path
+            #     else None
+            # )
+
+            return cls(
+                model=model,
+                x_preprocessor=x_proc,
+                # y_preprocessor=y_proc,
+            )
+
+        except Exception as e:
+            logger.exception("Failed to load artifacts for inference model.")
+            raise StudentPerformanceError(e, logger) from e
+
+    @classmethod
+    def from_objects(
+        cls,
+        model: Any,
+        x_preprocessor: Any | None = None,
+        # y_preprocessor: Any | None = None,
+    ):
+        """
+        Construct directly from in-memory model and preprocessor objects.
+        """
+        try:
+            return cls(
+                model=model,
+                x_preprocessor=x_preprocessor,
+                # y_preprocessor=y_preprocessor,
+            )
+        except Exception as e:
+            logger.exception("Failed to build inference model from objects.")
+            raise StudentPerformanceError(e, logger) from e

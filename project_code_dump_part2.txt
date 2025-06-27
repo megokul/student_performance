@@ -1,0 +1,1186 @@
+--- CODE DUMP | PART 2 of 4 ---
+
+
+================================================================================
+# PY FILE: src\student_performance\components\model_prediction.py
+================================================================================
+
+from typing import Any
+import numpy as np
+import pandas as pd
+from pathlib import Path
+from datetime import datetime, timezone
+
+from src.student_performance.entity.config_entity import ModelPredictionConfig
+from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.utils.core import load_object, load_array
+from src.student_performance.inference.estimator import StudentPerformanceModel
+
+
+class ModelPrediction:
+    def __init__(
+        self,
+        prediction_config: ModelPredictionConfig,
+        backup_handler: DBHandler | None = None,
+    ):
+        try:
+            logger.info("Initializing ModelPrediction.")
+            self.prediction_config = prediction_config
+            self.backup_handler = backup_handler
+            self.timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+            self._load_inference_model()
+        except Exception as e:
+            logger.exception("Failed to initialize ModelPrediction.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def _load_inference_model(self):
+        try:
+            if self.prediction_config.local_enabled:
+                logger.info("Loading inference model from local path.")
+                self.inference_model: StudentPerformanceModel = load_object(
+                    self.prediction_config.inference_model_filepath,
+                    label="Inference Model",
+                )
+            elif self.prediction_config.s3_enabled and self.backup_handler:
+                logger.info("Loading inference model from S3.")
+                with self.backup_handler as handler:
+                    self.inference_model: StudentPerformanceModel = handler.load_object(
+                        self.prediction_config.inference_model_s3_uri,
+                    )
+            else:
+                raise StudentPerformanceError(
+                    "Neither local nor S3 inference model loading is enabled or configured properly.",
+                    logger,
+                )
+        except Exception as e:
+            logger.exception("Failed to load inference model.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def predict(self, X_raw: pd.DataFrame) -> np.ndarray:
+        try:
+            logger.info("Running prediction using inference model.")
+            y_pred = self.inference_model.predict(X_raw)
+            return y_pred
+        except Exception as e:
+            logger.exception("Prediction failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def predict_from_file(self, X_filepath: Path) -> np.ndarray:
+        try:
+            logger.info(f"Loading input data from file: {X_filepath}")
+            X_raw = load_array(X_filepath, label="Input Data")
+            return self.predict(X_raw)
+        except Exception as e:
+            logger.exception("Prediction from file failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def save_predictions(self, predictions: np.ndarray) -> None:
+        try:
+            pred_df = pd.DataFrame({"prediction": predictions})
+            file_name = f"{self.timestamp}_preds.csv"
+
+            # Local save
+            if self.prediction_config.local_enabled:
+                local_dir = self.prediction_config.root_dir / self.timestamp
+                local_dir.mkdir(parents=True, exist_ok=True)
+                local_path = local_dir / file_name
+
+                pred_df.to_csv(local_path, index=False)
+                logger.info(f"Saved predictions locally at {local_path}")
+            else:
+                logger.info("Local save disabled — skipping local predictions save.")
+
+            # S3 save
+            if self.prediction_config.s3_enabled and self.backup_handler:
+                s3_key = f"{self.prediction_config.root_s3_key}/{self.timestamp}/{file_name}"
+                with self.backup_handler as handler:
+                    handler.stream_df_as_csv(pred_df, s3_key)
+                    logger.info(f"Saved predictions to S3 at {s3_key}")
+            else:
+                logger.info("S3 save disabled or backup handler not provided — skipping S3 save.")
+
+        except Exception as e:
+            logger.exception("Failed to save predictions.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\components\model_trainer.py
+================================================================================
+
+from datetime import datetime, timezone
+import os
+import importlib
+import numpy as np
+import optuna
+import mlflow
+import dagshub
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import get_scorer, r2_score
+from pathlib import Path
+
+from src.student_performance.entity.config_entity import ModelTrainerConfig
+from src.student_performance.entity.artifact_entity import (
+    ModelTrainerArtifact,
+    DataTransformationArtifact,
+)
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+from src.student_performance.utils.core import (
+    save_to_yaml,
+    save_object,
+    load_array,
+    load_object,
+)
+from src.student_performance.dbhandler.base_handler import DBHandler
+from src.student_performance.inference.estimator import StudentPerformanceModel
+
+
+class ModelTrainer:
+    def __init__(
+        self,
+        trainer_config: ModelTrainerConfig,
+        transformation_artifact: DataTransformationArtifact,
+        backup_handler: DBHandler | None = None,
+    ):
+        try:
+            self.trainer_config = trainer_config
+            self.transformation_artifact = transformation_artifact
+            self.backup_handler = backup_handler
+
+            if trainer_config.tracking.mlflow.enabled:
+                dagshub.init(
+                    repo_owner=os.getenv("DAGSHUB_REPO_OWNER"),
+                    repo_name=os.getenv("DAGSHUB_REPO_NAME"),
+                    mlflow=True,
+                )
+                mlflow.set_tracking_uri(trainer_config.tracking.tracking_uri)
+                if trainer_config.tracking.mlflow.experiment_name:
+                    mlflow.set_experiment(trainer_config.tracking.mlflow.experiment_name)
+        except Exception as e:
+            logger.exception("Failed to initialize ModelTrainer.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __load_data(self) -> None:
+        try:
+            logger.info("Loading train/val data")
+
+            if self.trainer_config.local_enabled:
+                self.X_train = load_array(self.transformation_artifact.x_train_filepath, "X_train")
+                self.y_train = load_array(self.transformation_artifact.y_train_filepath, "y_train")
+                self.X_val = load_array(self.transformation_artifact.x_val_filepath, "X_val")
+                self.y_val = load_array(self.transformation_artifact.y_val_filepath, "y_val")
+                self.x_preprocessor = load_object(self.transformation_artifact.x_preprocessor_filepath, "X_Processor")
+                self.y_preprocessor = load_object(self.transformation_artifact.y_preprocessor_filepath, "Y_Processor")
+
+            elif self.trainer_config.s3_enabled and self.backup_handler:
+                with self.backup_handler as handler:
+                    self.X_train = handler.load_npy(self.transformation_artifact.x_train_s3_uri)
+                    self.y_train = handler.load_npy(self.transformation_artifact.y_train_s3_uri)
+                    self.X_val = handler.load_npy(self.transformation_artifact.x_val_s3_uri)
+                    self.y_val = handler.load_npy(self.transformation_artifact.y_val_s3_uri)
+                    self.x_preprocessor = handler.load_object(self.transformation_artifact.x_preprocessor_s3_uri)
+                    self.y_preprocessor = handler.load_object(self.transformation_artifact.y_preprocessor_s3_uri)
+
+        except Exception as e:
+            logger.exception("Failed to load training data.")
+            raise StudentPerformanceError(e, logger) from e
+
+    @staticmethod
+    def compute_adjusted_r2(r2: float, n_samples: int, n_features: int) -> float:
+        if n_samples <= n_features + 1:
+            return np.nan
+        return 1 - (1 - r2) * ((n_samples - 1) / (n_samples - n_features - 1))
+
+    def __select_and_tune(self) -> dict:
+        try:
+            logger.info("Selecting and (optionally) tuning models")
+            best = {"score": -np.inf, "spec": None, "trial": None}
+
+            for spec in self.trainer_config.models:
+                if self.trainer_config.optimization.enabled:
+                    trial, _ = self.__optimize_one(spec)
+                    score = trial.value
+                else:
+                    model = self._instantiate(spec["name"], spec.get("params", {}))
+                    score = cross_val_score(
+                        model,
+                        self.X_train,
+                        self.y_train,
+                        cv=self.trainer_config.optimization.cv_folds,
+                        scoring=self.trainer_config.optimization.scoring,
+                    ).mean()
+                if score > best["score"]:
+                    best.update(
+                        score=score,
+                        spec=spec,
+                        trial=trial if self.trainer_config.optimization.enabled else None,
+                    )
+            return best
+
+        except Exception as e:
+            logger.exception("Model selection/tuning failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __optimize_one(self, spec: dict):
+        def objective(trial):
+            params = {}
+            for name, space in spec.get("search_space", {}).items():
+                if "choices" in space:
+                    params[name] = trial.suggest_categorical(name, space["choices"])
+                else:
+                    low, high = space["low"], space["high"]
+                    if isinstance(low, int):
+                        params[name] = trial.suggest_int(name, low, high, step=space.get("step", 1))
+                    else:
+                        params[name] = trial.suggest_float(name, low, high, log=space.get("log", False))
+            clf = self._instantiate(spec["name"], params)
+            return cross_val_score(
+                clf,
+                self.X_train,
+                self.y_train,
+                cv=self.trainer_config.optimization.cv_folds,
+                scoring=self.trainer_config.optimization.scoring,
+                n_jobs=-1,
+            ).mean()
+
+        study = optuna.create_study(direction=self.trainer_config.optimization.direction)
+        study.optimize(objective, n_trials=self.trainer_config.optimization.n_trials)
+        return study.best_trial, study
+
+    def _instantiate(self, full_class_string: str, params: dict):
+        module_path, cls_name = full_class_string.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        return getattr(module, cls_name)(**(params or {}))
+
+    def __train_and_evaluate(self, spec: dict, params: dict):
+        try:
+            logger.info(f"Training final model: {spec['name']}")
+            clf = self._instantiate(spec["name"], params)
+            clf.fit(self.X_train, self.y_train)
+
+            def compute_metrics(X, y):
+                metrics = {}
+                for m in self.trainer_config.tracking.mlflow.metrics_to_log:
+                    if m == "adjusted_r2":
+                        r2 = r2_score(y, clf.predict(X))
+                        adj_r2 = self.compute_adjusted_r2(r2, X.shape[0], X.shape[1])
+                        metrics["adjusted_r2"] = adj_r2
+                    else:
+                        scorer = get_scorer(m)
+                        metrics[m] = scorer(clf, X, y)
+                return metrics
+
+            train_metrics = compute_metrics(self.X_train, self.y_train)
+            val_metrics = compute_metrics(self.X_val, self.y_val)
+
+            return clf, train_metrics, val_metrics
+
+        except Exception as e:
+            logger.exception("Final training/evaluation failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+    def __save_artifacts(self, model, report, inference_model, experiment_id, run_id):
+        trained_local = None
+        report_local = None
+        inference_local = None
+        trained_s3 = None
+        report_s3 = None
+        inference_s3 = None
+
+        if self.trainer_config.local_enabled:
+            trained_local = self.trainer_config.trained_model_filepath
+            save_object(model, trained_local, label="Trained Model")
+
+            inference_local = self.trainer_config.inference_model_filepath
+            save_object(inference_model, inference_local, label="Inference Model")
+
+            report_local = self.trainer_config.training_report_filepath
+            save_to_yaml(report, report_local, label="Training Report")
+
+        if self.trainer_config.s3_enabled and self.backup_handler:
+            with self.backup_handler as handler:
+                trained_s3 = handler.stream_object(model, self.trainer_config.trained_model_s3_key)
+                inference_s3 = handler.stream_object(inference_model, self.trainer_config.inference_model_s3_key)
+                report_s3 = handler.stream_yaml(report, self.trainer_config.training_report_s3_key)
+
+        return ModelTrainerArtifact(
+            trained_model_filepath=trained_local,
+            training_report_filepath=report_local,
+            inference_model_filepath=inference_local,
+            x_train_filepath=self.transformation_artifact.x_train_filepath if self.trainer_config.local_enabled else None,
+            y_train_filepath=self.transformation_artifact.y_train_filepath if self.trainer_config.local_enabled else None,
+            x_val_filepath=self.transformation_artifact.x_val_filepath if self.trainer_config.local_enabled else None,
+            y_val_filepath=self.transformation_artifact.y_val_filepath if self.trainer_config.local_enabled else None,
+            x_test_filepath=self.transformation_artifact.x_test_filepath if self.trainer_config.local_enabled else None,
+            y_test_filepath=self.transformation_artifact.y_test_filepath if self.trainer_config.local_enabled else None,
+            trained_model_s3_uri=trained_s3,
+            training_report_s3_uri=report_s3,
+            inference_model_s3_uri=inference_s3,
+            x_train_s3_uri=self.transformation_artifact.x_train_s3_uri if self.trainer_config.s3_enabled else None,
+            y_train_s3_uri=self.transformation_artifact.y_train_s3_uri if self.trainer_config.s3_enabled else None,
+            x_val_s3_uri=self.transformation_artifact.x_val_s3_uri if self.trainer_config.s3_enabled else None,
+            y_val_s3_uri=self.transformation_artifact.y_val_s3_uri if self.trainer_config.s3_enabled else None,
+            x_test_s3_uri=self.transformation_artifact.x_test_s3_uri if self.trainer_config.s3_enabled else None,
+            y_test_s3_uri=self.transformation_artifact.y_test_s3_uri if self.trainer_config.s3_enabled else None,
+            experiment_id=experiment_id,
+            run_id=run_id,
+        )
+
+    def __to_positive(self, metrics: dict[str, float]) -> dict[str, float]:
+        out = {}
+        for name, val in metrics.items():
+            if name.startswith("neg_"):
+                out[name[4:]] = -val
+            else:
+                out[name] = val
+        return out
+
+    def run_training(self) -> ModelTrainerArtifact:
+        try:
+            logger.info("========== Starting Model Training ==========")
+            self.__load_data()
+
+            with mlflow.start_run() as active_run:
+                exp_id = active_run.info.experiment_id
+                run_id = active_run.info.run_id
+
+                best = self.__select_and_tune()
+                params = best["trial"].params if best["trial"] else best["spec"].get("params", {})
+
+                model, train_m, val_m = self.__train_and_evaluate(best["spec"], params)
+
+                train_pos = self.__to_positive(train_m)
+                val_pos = self.__to_positive(val_m)
+
+                mlflow.log_params(params)
+                for name, val in train_pos.items():
+                    mlflow.log_metric(f"train_{name}", val)
+                for name, val in val_pos.items():
+                    mlflow.log_metric(f"val_{name}", val)
+
+                inference_model = StudentPerformanceModel.from_objects(
+                    model=model,
+                    x_preprocessor=self.x_preprocessor,
+                    y_preprocessor=self.y_preprocessor,
+                )
+
+                report = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "best_model": best["spec"]["name"].split(".")[-1],
+                    "best_params": params,
+                    "train_metrics": train_pos,
+                    "val_metrics": val_pos,
+                    "optimization": {
+                        "enabled": self.trainer_config.optimization.enabled,
+                        "best_score": best["score"],
+                        "direction": self.trainer_config.optimization.direction,
+                        "cv_folds": self.trainer_config.optimization.cv_folds,
+                    },
+                }
+
+            logger.info("========== Model Training Completed ==========")
+            return self.__save_artifacts(model, report, inference_model, exp_id, run_id)
+
+        except Exception as e:
+            logger.exception("Model training pipeline failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\config\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\config\configuration.py
+================================================================================
+
+from src.student_performance.constants.constants import (
+    CONFIG_ROOT,
+    CONFIG_FILENAME,
+    PARAMS_FILENAME,
+    SCHEMA_FILENAME,
+    TEMPLATES_FILENAME,
+    LOGS_ROOT,
+    ARTIFACTS_ROOT,
+    POSTGRES_HANDLER_ROOT,
+    DVC_ROOT,
+    DVC_RAW_SUBDIR,
+    DVC_VALIDATED_SUBDIR,
+    DVC_TRANSFORMED_SUBDIR,
+    INGEST_ROOT,
+    INGEST_RAW_SUBDIR,
+    INGEST_INGESTED_SUBDIR,
+    VALID_ROOT,
+    VALID_VALIDATED_SUBDIR,
+    VALID_REPORTS_SUBDIR,
+    TRANSFORM_ROOT,
+    TRANSFORM_TRAIN_SUBDIR,
+    TRANSFORM_TEST_SUBDIR,
+    TRANSFORM_VAL_SUBDIR,
+    TRANSFORM_PROCESSOR_SUBDIR,
+    TRAINER_ROOT,
+    TRAINER_MODEL_SUBDIR,
+    TRAINER_REPORTS_SUBDIR,
+    INFERENCE_MODEL_ROOT,
+    TRAINER_INFERENCE_SUBDIR,
+    EVALUATION_ROOT,
+    EVALUATION_REPORT_SUBDIR,
+    PREDICTION_ROOT,
+
+)
+
+from pathlib import Path
+import os
+from src.student_performance.utils.timestamp import get_utc_timestamp
+from src.student_performance.utils.core import read_yaml
+from src.student_performance.entity.config_entity import (
+    PostgresDBHandlerConfig,
+    S3HandlerConfig,
+    DataIngestionConfig,
+    DataValidationConfig,
+    DataTransformationConfig,
+    ModelTrainerConfig,
+    ModelEvaluationConfig,
+    ModelPredictionConfig,
+)
+
+class ConfigurationManager:
+    _global_timestamp: str = None
+    def __init__(self) -> None:
+        self._init_artifacts()
+        self._load_configs()
+
+    def _init_artifacts(self) -> None:
+        if ConfigurationManager._global_timestamp is None:
+            ConfigurationManager._global_timestamp = get_utc_timestamp()
+
+        timestamp = ConfigurationManager._global_timestamp
+        self.artifacts_root = Path(ARTIFACTS_ROOT) / timestamp
+        self.logs_root = Path(LOGS_ROOT) / timestamp
+
+    def _load_configs(self) -> None:
+        config_root = Path(CONFIG_ROOT)
+        config_filepath = config_root / CONFIG_FILENAME
+        params_filepath = config_root / PARAMS_FILENAME
+        schema_filepath = config_root / SCHEMA_FILENAME
+        templates_filepath = config_root / TEMPLATES_FILENAME
+
+        self.config = read_yaml(config_filepath)
+        self.params = read_yaml(params_filepath)
+        self.schema = read_yaml(schema_filepath)
+        self.templates = read_yaml(templates_filepath)
+
+    def get_postgres_handler_config(self) -> PostgresDBHandlerConfig:
+
+        postgres_config = self.config.postgres_dbhandler
+        root_dir = self.artifacts_root / POSTGRES_HANDLER_ROOT
+        input_data_filepath = Path(postgres_config.input_data_dir) / postgres_config.input_data_filename
+        table_schema = self.schema.table_schema
+
+        return PostgresDBHandlerConfig(
+            root_dir=root_dir,
+            host=os.getenv("RDS_HOST"),
+            port=os.getenv("RDS_PORT"),
+            dbname=postgres_config.dbname,
+            user=os.getenv("RDS_USER"),
+            password=os.getenv("RDS_PASS"),
+            table_name=postgres_config.table_name,
+            input_data_filepath=input_data_filepath,
+            table_schema=table_schema,
+        )
+
+    def get_s3_handler_config(self) -> S3HandlerConfig:
+        s3_config = self.config.s3_handler  # your config.yaml has these under model_pusher
+        root_dir = self.artifacts_root / "s3_handler"
+        aws_region = os.getenv("AWS_REGION")
+
+        return S3HandlerConfig(
+            root_dir=root_dir,
+            bucket_name=s3_config.s3_bucket,
+            aws_region=aws_region,
+            local_dir_to_sync=self.artifacts_root,  # assuming you want to sync entire artifacts dir
+            s3_artifacts_prefix=s3_config.s3_artifacts_prefix,
+        )
+
+    def _build_s3_key(self, prefix: str, path: Path, relative_to: Path) -> str:
+        """
+        Build an S3 key by combining a prefix and the relative path of a file.
+
+        Args:
+            prefix (str): S3 base prefix (e.g., 'artifacts')
+            path (Path): Full local path to the file
+            relative_to (Path): The root to compute relative path from
+
+        Returns:
+            str: S3 key in POSIX format (forward slashes)
+        """
+        return f"{prefix}/{path.relative_to(relative_to).as_posix()}"
+
+
+    def get_data_ingestion_config(self) -> DataIngestionConfig:
+        ingestion_config = self.config.data_ingestion
+        data_backup_config = self.config.data_backup
+
+        # File names
+        raw_name = ingestion_config.raw_data_filename
+        ingested_name = ingestion_config.ingested_data_filename
+
+        # Local paths
+        root_dir = self.artifacts_root / INGEST_ROOT
+        raw_filepath = root_dir / INGEST_RAW_SUBDIR / raw_name
+        dvc_raw_filepath = Path(DVC_ROOT) / DVC_RAW_SUBDIR / raw_name
+        ingested_filepath = root_dir / INGEST_INGESTED_SUBDIR / ingested_name
+
+        return DataIngestionConfig(
+            root_dir=root_dir,
+            raw_filepath=raw_filepath,
+            dvc_raw_filepath=dvc_raw_filepath,
+            ingested_filepath=ingested_filepath,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+        )
+
+    def get_data_validation_config(self) -> DataValidationConfig:
+        validation_config = self.config.data_validation
+        data_backup_config = self.config.data_backup
+        schema = self.schema.validation_schema
+        report_template = self.templates.validation_report
+        validation_params = self.params.validation_params
+
+        validated_data_filename = validation_config.validated_data_filename
+        missing_report_filename = validation_config.missing_report_filename
+        duplicates_report_filename = validation_config.duplicates_report_filename
+        drift_report_filename = validation_config.drift_report_filename
+        validation_report_filename = validation_config.validation_report_filename
+        categorical_report_filename = validation_config.categorical_report_filename
+
+        root_dir = self.artifacts_root / VALID_ROOT
+        validated_filepath = root_dir / VALID_VALIDATED_SUBDIR / validated_data_filename
+        missing_report_filepath = root_dir / VALID_REPORTS_SUBDIR / missing_report_filename
+        duplicates_report_filepath = root_dir / VALID_REPORTS_SUBDIR / duplicates_report_filename
+        drift_report_filepath = root_dir / VALID_REPORTS_SUBDIR / drift_report_filename
+        validation_report_filepath = root_dir / VALID_REPORTS_SUBDIR / validation_report_filename
+        categorical_report_filepath =  root_dir / VALID_REPORTS_SUBDIR / categorical_report_filename
+
+        dvc_validated_filepath = Path(DVC_ROOT) / DVC_VALIDATED_SUBDIR / validated_data_filename
+
+        return DataValidationConfig(
+            root_dir=root_dir,
+            validated_filepath=validated_filepath,
+            dvc_validated_filepath=dvc_validated_filepath,
+            schema=schema,
+            report_template=report_template,
+            validation_params=validation_params,
+            missing_report_filepath=missing_report_filepath,
+            duplicates_report_filepath=duplicates_report_filepath,
+            drift_report_filepath=drift_report_filepath,
+            validation_report_filepath=validation_report_filepath,
+            categorical_report_filepath=categorical_report_filepath,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+        )
+
+    def get_data_transformation_config(self) -> DataTransformationConfig:
+        transformation_config = self.config.data_transformation
+        transformation_params = self.params.transformation_params
+        output_column = self.schema.target_column
+        data_backup_config = self.config.data_backup
+
+        root_dir = self.artifacts_root / TRANSFORM_ROOT
+
+        # Local paths
+        x_train = root_dir / TRANSFORM_TRAIN_SUBDIR / transformation_config.x_train_filename
+        y_train = root_dir / TRANSFORM_TRAIN_SUBDIR / transformation_config.y_train_filename
+        x_val = root_dir / TRANSFORM_VAL_SUBDIR / transformation_config.x_val_filename
+        y_val = root_dir / TRANSFORM_VAL_SUBDIR / transformation_config.y_val_filename
+        x_test = root_dir / TRANSFORM_TEST_SUBDIR / transformation_config.x_test_filename
+        y_test = root_dir / TRANSFORM_TEST_SUBDIR / transformation_config.y_test_filename
+
+        # DVC-tracked paths
+        dvc_root = Path(DVC_ROOT) / DVC_TRANSFORMED_SUBDIR
+
+        x_train_dvc = dvc_root / transformation_config.x_train_filename
+        y_train_dvc = dvc_root / transformation_config.y_train_filename
+        x_val_dvc = dvc_root / transformation_config.x_val_filename
+        y_val_dvc = dvc_root / transformation_config.y_val_filename
+        x_test_dvc = dvc_root / transformation_config.x_test_filename
+        y_test_dvc = dvc_root / transformation_config.y_test_filename
+
+        # Preprocessor objects
+        x_processor_path = root_dir / TRANSFORM_PROCESSOR_SUBDIR / transformation_config.x_preprocessor_filename
+        y_processor_path = root_dir / TRANSFORM_PROCESSOR_SUBDIR / transformation_config.y_preprocessor_filename
+
+        return DataTransformationConfig(
+            root_dir=root_dir,
+            target_column=output_column,
+            transformation_params=transformation_params,
+            x_train_filepath=x_train,
+            y_train_filepath=y_train,
+            x_val_filepath=x_val,
+            y_val_filepath=y_val,
+            x_test_filepath=x_test,
+            y_test_filepath=y_test,
+            x_train_dvc_filepath=x_train_dvc,
+            y_train_dvc_filepath=y_train_dvc,
+            x_val_dvc_filepath=x_val_dvc,
+            y_val_dvc_filepath=y_val_dvc,
+            x_test_dvc_filepath=x_test_dvc,
+            y_test_dvc_filepath=y_test_dvc,
+            x_preprocessor_filepath=x_processor_path,
+            y_preprocessor_filepath=y_processor_path,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+        )
+
+    def get_model_trainer_config(self) -> ModelTrainerConfig:
+        trainer_config = self.config.model_trainer
+        trainer_params = self.params.model_trainer
+        tracking_params = self.params.tracking
+        data_backup_config = self.config.data_backup
+
+        root_dir = self.artifacts_root / TRAINER_ROOT
+        inference_model_filepath = Path(INFERENCE_MODEL_ROOT) / trainer_config.inference_model_filename
+        inference_model_serving_filepath = root_dir / TRAINER_INFERENCE_SUBDIR / trainer_config.inference_model_filename
+        trained_model_filepath = root_dir / TRAINER_MODEL_SUBDIR / trainer_config.trained_model_filename
+        training_report_filepath = root_dir / TRAINER_REPORTS_SUBDIR / trainer_config.training_report_filename
+
+        tracking_params.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+
+        return ModelTrainerConfig(
+            root_dir=root_dir,
+            trained_model_filepath=trained_model_filepath,
+            training_report_filepath=training_report_filepath,
+            models=trainer_params.models,
+            optimization=trainer_params.optimization,
+            tracking=tracking_params,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+            inference_model_filepath=inference_model_filepath,
+            inference_model_serving_filepath=inference_model_serving_filepath,
+        )
+
+    def get_model_evaluation_config(self) -> ModelEvaluationConfig:
+        evaluation_config = self.config.model_evaluation
+        data_backup_config = self.config.data_backup
+        tracking_params = self.params.tracking
+        eval_metrics = self.params.model_evaluation
+
+        root_dir = self.artifacts_root / EVALUATION_ROOT
+        evaluation_report_filepath = root_dir / EVALUATION_REPORT_SUBDIR / evaluation_config.report_filename
+
+        tracking_params.tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+
+        return ModelEvaluationConfig(
+            root_dir=root_dir,
+            evaluation_report_filepath=evaluation_report_filepath,
+            tracking=tracking_params,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+            eval_metrics=eval_metrics,
+        )
+
+    def get_model_prediction_config(self) -> ModelPredictionConfig:
+        trainer_config = self.config.model_trainer
+        data_backup_config = self.config.data_backup
+
+        root_dir = Path(PREDICTION_ROOT)
+        inference_model_filepath = Path(INFERENCE_MODEL_ROOT) / trainer_config.inference_model_filename
+
+        return ModelPredictionConfig(
+            root_dir=root_dir,
+            inference_model_filepath=inference_model_filepath,
+            local_enabled=data_backup_config.local_enabled,
+            s3_enabled=data_backup_config.s3_enabled,
+        )
+
+================================================================================
+# PY FILE: src\student_performance\constants\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\constants\constants.py
+================================================================================
+
+CONFIG_ROOT = "config"
+CONFIG_FILENAME = "config.yaml"
+PARAMS_FILENAME = "params.yaml"
+SCHEMA_FILENAME = "schema.yaml"
+TEMPLATES_FILENAME = "templates.yaml"
+
+LOGS_ROOT = "logs"
+
+ARTIFACTS_ROOT = "artifacts"
+
+POSTGRES_HANDLER_ROOT = "mongo_handler"
+INGEST_ROOT = "data_ingestion"
+INGEST_RAW_SUBDIR = "raw_data"
+INGEST_INGESTED_SUBDIR = "ingested_data"
+
+DVC_ROOT = "data"
+DVC_RAW_SUBDIR = "raw"
+DVC_VALIDATED_SUBDIR = "validated"
+DVC_TRANSFORMED_SUBDIR = "transformed"
+
+VALID_ROOT = "data_validation"
+VALID_VALIDATED_SUBDIR = "validated"
+VALID_REPORTS_SUBDIR = "reports"
+
+X_TRAIN_LABEL = "X_train"
+Y_TRAIN_LABEL = "y_train"
+X_VAL_LABEL = "X_val"
+Y_VAL_LABEL = "y_val"
+X_TEST_LABEL = "X_test"
+Y_TEST_LABEL = "y_test"
+
+TRANSFORM_ROOT = "data_transformation"
+TRANSFORM_TRAIN_SUBDIR = "train"
+TRANSFORM_TEST_SUBDIR = "test"
+TRANSFORM_VAL_SUBDIR = "val"
+TRANSFORM_PROCESSOR_SUBDIR = "data_processor"
+
+TRAINER_ROOT = "model_trainer"
+TRAINER_MODEL_SUBDIR = "model"
+TRAINER_REPORTS_SUBDIR = "reports"
+TRAINER_INFERENCE_SUBDIR = "inference_model"
+
+INFERENCE_MODEL_ROOT = "inference_model"
+
+EVALUATION_ROOT = "model_evaluation"
+EVALUATION_REPORT_SUBDIR = "reports"
+
+PREDICTION_ROOT = "predictions"
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\__init__.py
+================================================================================
+
+
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\column_math_factory.py
+================================================================================
+
+from typing import Literal
+import pandas as pd
+import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+ColumnMathOperation = Literal[
+    "add", "subtract", "multiply", "divide",
+    "mean_of_columns", "sqrt", "square", "power",
+]
+
+
+class ColumnMathFactory(BaseEstimator, TransformerMixin):
+    """
+    Transformer to apply mathematical operations to specified columns
+    and create a new output column—optionally dropping the inputs in place.
+
+    Attributes:
+        columns (list[str]): Columns to operate on.
+        operation (str): Operation to apply.
+        output_column (str): Name of the resulting column.
+        inplace (bool): If True, drops the input columns after transformation.
+        return_numpy (bool): If True, returns result as numpy array.
+    """
+
+    def __init__(
+        self,
+        columns: list[str],
+        operation: ColumnMathOperation,
+        output_column: str,
+        inplace: bool = False,
+        return_numpy: bool = True,
+    ) -> None:
+        self.columns = columns
+        self.operation = operation.lower()
+        self.output_column = output_column
+        self.inplace = inplace
+        self.return_numpy = return_numpy
+
+        logger.debug(
+            "Initialized ColumnMathFactory with operation='%s', columns=%s, output_column='%s', inplace=%s, return_numpy=%s",
+            self.operation, self.columns, self.output_column, self.inplace, self.return_numpy
+        )
+
+    def fit(self, X: pd.DataFrame, y: pd.Series = None) -> "ColumnMathFactory":
+        logger.debug("Fitting ColumnMathFactory (no operation needed).")
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame | np.ndarray:
+        try:
+            logger.debug("Starting transformation using ColumnMathFactory.")
+            df = X.copy()
+
+            if self.operation == "add":
+                df[self.output_column] = df[self.columns].sum(axis=1)
+            elif self.operation == "subtract":
+                df[self.output_column] = df[self.columns[0]]
+                for col in self.columns[1:]:
+                    df[self.output_column] -= df[col]
+            elif self.operation == "multiply":
+                df[self.output_column] = df[self.columns].prod(axis=1)
+            elif self.operation == "divide":
+                df[self.output_column] = df[self.columns[0]]
+                for col in self.columns[1:]:
+                    df[self.output_column] /= df[col]
+            elif self.operation == "mean_of_columns":
+                df[self.output_column] = df[self.columns].mean(axis=1)
+            else:
+                logger.error("Unsupported operation '%s' in ColumnMathFactory.", self.operation)
+                raise ValueError(f"Unsupported operation: {self.operation}")
+
+            logger.info(
+                "Applied column math: operation='%s', columns=%s, output='%s', inplace=%s",
+                self.operation,
+                self.columns,
+                self.output_column,
+                self.inplace,
+            )
+
+            if self.inplace:
+                logger.debug("Dropping source columns: %s", self.columns)
+                df.drop(columns=self.columns, inplace=True)
+
+            logger.debug("ColumnMathFactory transformation complete. Output shape: %s", df.shape)
+
+            return df.to_numpy() if self.return_numpy else df
+
+        except Exception as e:
+            logger.exception("ColumnMathFactory transformation failed.")
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\column_operation_factory.py
+================================================================================
+
+from sklearn.base import BaseEstimator, TransformerMixin
+import pandas as pd
+
+from src.student_performance.logging import logger
+from src.student_performance.exception.exception import StudentPerformanceError
+
+
+class ColumnOperationFactory(BaseEstimator, TransformerMixin):
+    """
+    Factory transformer for performing column-level operations.
+
+    Supported operations:
+        - remove_col: Removes specified columns from the dataset
+    """
+
+    def __init__(self, operation: str, columns: list[str] | None = None):
+        """
+        Args:
+            operation (str): The operation to apply (e.g., "remove_col").
+            columns (list[str]): Columns involved in the operation.
+        """
+        self.operation = operation.lower()
+        self.columns = columns or []
+
+    def fit(self, X: pd.DataFrame, y=None) -> "ColumnOperationFactory":
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        try:
+            if not isinstance(X, pd.DataFrame):
+                raise ValueError("Input must be a pandas DataFrame.")
+
+            logger.debug("Applying column operation: '%s' on columns: %s", self.operation, self.columns)
+
+            if self.operation == "remove_col":
+                transformed = X.drop(columns=self.columns, errors="ignore")
+                logger.info("Removed columns: %s (if present)", self.columns)
+                return transformed
+
+            raise ValueError(f"Unsupported column operation: '{self.operation}'")
+
+        except Exception as e:
+            logger.exception("Failed to perform column operation: %s", self.operation)
+            raise StudentPerformanceError(e, logger) from e
+
+
+def get_column_operation(method: str, **kwargs) -> ColumnOperationFactory:
+    """
+    Factory method to return a configured ColumnOperationFactory instance.
+
+    Supported method:
+        - 'remove_col'
+
+    Example:
+        get_column_operation("remove_col", columns=["id", "timestamp"])
+    """
+    try:
+        return ColumnOperationFactory(operation=method, columns=kwargs.get("columns", []))
+    except Exception as e:
+        logger.exception("Failed to initialize ColumnOperationFactory for method: %s", method)
+        raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\encoder_factory.py
+================================================================================
+
+# FILE: src/student_performance/data_processors/encoder_factory.py
+
+from typing import Optional
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from sklearn.compose import ColumnTransformer
+
+import pandas as pd
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class EncoderFactory:
+    """
+    Factory to construct encoding pipelines.
+
+    Supported methods:
+        - one_hot   → OneHotEncoder
+        - ordinal   → OrdinalEncoder
+    """
+    _SUPPORTED_METHODS = {
+        "one_hot": OneHotEncoder,
+        "ordinal": OrdinalEncoder,
+    }
+
+    @staticmethod
+    @ensure_annotations
+    def get_encoder_pipeline(
+        method: str,
+        params: Optional[dict] = None,
+        is_target: bool = False,
+    ) -> Pipeline:
+        try:
+            logger.debug("Requested encoder: method='%s', is_target=%s", method, is_target)
+
+            if method not in EncoderFactory._SUPPORTED_METHODS:
+                raise ValueError(f"Unsupported encoding method: {method}")
+
+            encoder_class = EncoderFactory._SUPPORTED_METHODS[method]
+            params = params or {}
+
+            # Extract and remove 'columns' from params
+            columns = params.pop("columns", None)
+            if columns is None:
+                raise ValueError("You must specify 'columns' for encoder in params.yaml")
+
+            logger.info("Initializing %s with columns: %s and params: %s", method, columns, params)
+
+            encoder = encoder_class(**params)
+
+            column_transformer = ColumnTransformer(
+                transformers=[("encoder", encoder, columns)],
+                remainder="passthrough"
+            )
+
+            logger.info("Successfully built ColumnTransformer with method: %s", method)
+
+            return Pipeline(steps=[("column_encoder", column_transformer)])
+
+        except Exception as e:
+            logger.exception("Failed to build encoder pipeline using method: %s", method)
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\imputer_factory.py
+================================================================================
+
+from typing import Optional
+from ensure import ensure_annotations
+from sklearn.pipeline import Pipeline
+from sklearn.impute import KNNImputer, SimpleImputer
+from sklearn.experimental import enable_iterative_imputer  # noqa
+from sklearn.impute import IterativeImputer
+
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class ImputerFactory:
+    """
+    Factory to build imputation pipelines for numerical data.
+
+    Supported methods:
+        - knn
+        - simple
+        - iterative
+        - custom (requires callable in params)
+    """
+
+    _SUPPORTED_METHODS = {
+        "knn": KNNImputer,
+        "simple": SimpleImputer,
+        "iterative": IterativeImputer,
+    }
+
+    @staticmethod
+    @ensure_annotations
+    def get_imputer_pipeline(
+        method: str,
+        params: Optional[dict] = None,
+        is_target: bool = False
+    ) -> Pipeline:
+        try:
+            logger.debug("Requested imputer: method='%s', is_target=%s", method, is_target)
+
+            params = params or {}
+
+            if method == "custom":
+                if "custom_callable" not in params:
+                    raise ValueError("Custom imputer requires a 'custom_callable' in params.")
+                logger.info("Using custom imputer callable.")
+                imputer = params["custom_callable"]()
+            else:
+                ImputerClass = ImputerFactory._SUPPORTED_METHODS.get(method)
+                if not ImputerClass:
+                    raise ValueError(f"Unsupported imputation method: {method}")
+
+                logger.info("Initializing %s imputer with params: %s", method, params)
+                imputer = ImputerClass(**params)
+
+            logger.info("Successfully created imputer pipeline using method: %s", method)
+            return Pipeline(steps=[("imputer", imputer)])
+
+        except Exception as e:
+            logger.exception("Failed to build imputer pipeline using method: %s", method)
+            raise StudentPerformanceError(e, logger) from e
+
+================================================================================
+# PY FILE: src\student_performance\data_processors\preprocessor_builder.py
+================================================================================
+
+from typing import Dict, Tuple
+from box import ConfigBox
+from sklearn.pipeline import Pipeline
+
+from src.student_performance.data_processors.imputer_factory import ImputerFactory
+from src.student_performance.data_processors.scaler_factory import ScalerFactory
+from src.student_performance.data_processors.encoder_factory import EncoderFactory
+from src.student_performance.data_processors.column_math_factory import ColumnMathFactory
+from src.student_performance.data_processors.column_operation_factory import get_column_operation
+from src.student_performance.exception.exception import StudentPerformanceError
+from src.student_performance.logging import logger
+
+
+class PreprocessorBuilder:
+    """
+    Dynamically builds X and Y preprocessing pipelines using configurable
+    steps and methods from the transformation config.
+    """
+
+    @staticmethod
+    def _build_column_math(method: str, params: Dict[str, object]) -> ColumnMathFactory:
+        try:
+            logger.debug("Building 'column_math' step with method='%s', params=%s", method, params)
+            input_cols = params["input_column"]
+            output_col = params["output_column"]
+            inplace = params.get("inplace", False)
+
+            return ColumnMathFactory(
+                columns=input_cols,
+                operation=method,
+                output_column=output_col,
+                inplace=inplace,
+            )
+        except KeyError as e:
+            logger.error("Missing required parameter in 'column_math': %s", e)
+            raise ValueError(f"Missing required parameter for column_math: {e}") from e
+        except Exception as e:
+            logger.exception("Failed to build 'column_math' step.")
+            raise StudentPerformanceError(e, logger) from e
+
+    @staticmethod
+    def _build_column_operation(method: str, params: Dict[str, object]):
+        try:
+            logger.debug("Building 'column_operation' step with method='%s', params=%s", method, params)
+            return get_column_operation(method, **params)
+        except Exception as e:
+            logger.exception("Failed to build 'column_operation' step.")
+            raise StudentPerformanceError(e, logger) from e
+
+    STEP_BUILDERS: dict[str, object] = {
+        "column_operation": _build_column_operation.__func__,
+        "imputation": ImputerFactory.get_imputer_pipeline,
+        "standardization": ScalerFactory.get_scaler_pipeline,
+        "encoding": EncoderFactory.get_encoder_pipeline,
+        "column_math": _build_column_math.__func__,
+    }
+
+    def __init__(
+        self,
+        steps: dict[str, list[str]] | None = None,
+        methods: dict[str, ConfigBox] | None = None
+    ) -> None:
+        self.steps = steps or {}
+        self.methods = methods or {}
+
+    def _build_pipeline(self, section: str) -> Pipeline:
+        try:
+            logger.info("Building preprocessing pipeline for section: '%s'", section)
+
+            pipeline_steps: list[tuple[str, object]] = []
+            step_list = self.steps.get(section, [])
+            section_methods = self.methods.get(section, {})
+
+            for step_name in step_list:
+                step_config = section_methods.get(step_name, {})
+
+                if not step_config or (
+                    isinstance(step_config, str)
+                    and step_config.lower() == "none"
+                ):
+                    logger.info("Skipping step '%s' in section '%s' (explicitly disabled)", step_name, section)
+                    continue
+
+                builder_fn = self.STEP_BUILDERS.get(step_name)
+                if builder_fn is None:
+                    logger.error("Unsupported preprocessing step '%s' in section '%s'", step_name, section)
+                    raise ValueError(f"Unsupported preprocessing step: '{step_name}'")
+
+                # Extract method name and parameters
+                if isinstance(step_config, (dict, ConfigBox)):
+                    method_name = step_config.get("method")
+                    step_params = {k: v for k, v in step_config.items() if k != "method"}
+                else:
+                    method_name = step_config
+                    step_params = {}
+
+                logger.debug("Building step '%s' with method='%s' and params=%s", step_name, method_name, step_params)
+                step_obj = builder_fn(method_name, step_params)
+
+                logger.info("Adding step '%s' to section '%s'", step_name, section)
+                pipeline_steps.append((step_name, step_obj))
+
+            logger.info("Completed pipeline for section '%s' with %d steps", section, len(pipeline_steps))
+            return Pipeline(pipeline_steps)
+
+        except Exception as e:
+            logger.exception("Failed to build preprocessing pipeline for section: '%s'", section)
+            raise StudentPerformanceError(e, logger) from e
+
+    def build(self) -> Tuple[Pipeline, Pipeline | None]:
+        """
+        Builds and returns the X and Y preprocessing pipelines.
+        """
+        try:
+            logger.info("Initiating full preprocessing pipeline build (X and Y).")
+            x_pipeline = self._build_pipeline("x")
+            y_pipeline = self._build_pipeline("y")
+            logger.info("Successfully built both X and Y preprocessing pipelines.")
+            return x_pipeline, y_pipeline
+        except Exception as e:
+            logger.exception("Pipeline build failed during construction of X and Y pipelines.")
+            raise StudentPerformanceError(e, logger) from e
