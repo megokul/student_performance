@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <your-account-id>.dkr.ecr.us-east-1.amazonaws.com
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build -t studentperformance-app .
+      - docker tag studentperformance-app:latest <your-account-id>.dkr.ecr.us-east-1.amazonaws.com/studentperformance-app:latest
+  post_build:
+    commands:
+      - echo Pushing Docker image to ECR...
+      - docker push <your-account-id>.dkr.ecr.us-east-1.amazonaws.com/studentperformance-app:latest
+
+artifacts:
+  files: '**/*'
