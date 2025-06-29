@@ -1,19 +1,17 @@
 version: 0.2
 
 phases:
-  pre_build:
+  install:
+    runtime-versions:
+      python: 3.11
     commands:
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <your-account-id>.dkr.ecr.us-east-1.amazonaws.com
+      - pip install -r requirements.txt -t package/
+      - cp -r *.py package/
   build:
     commands:
-      - echo Building Docker image...
-      - docker build -t studentperformance-app .
-      - docker tag studentperformance-app:latest <your-account-id>.dkr.ecr.us-east-1.amazonaws.com/studentperformance-app:latest
-  post_build:
-    commands:
-      - echo Pushing Docker image to ECR...
-      - docker push <your-account-id>.dkr.ecr.us-east-1.amazonaws.com/studentperformance-app:latest
+      - cd package
+      - zip -r ../app.zip .
 
 artifacts:
-  files: '**/*'
+  files:
+    - app.zip
