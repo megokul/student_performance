@@ -45,7 +45,7 @@ s3_handler:
   s3_bucket: studentperformance-dev-artifacts
   s3_inference_model_prefix: inference_model
   s3_artifacts_prefix: artifacts
-  
+
 data_backup:
   s3_enabled: true
   local_enabled: true
