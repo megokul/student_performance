@@ -1,1 +1,14 @@
 [2025-06-30 15:38:19,901] - INFO - core - YAML successfully loaded from: 'config/config.yaml'
+[2025-06-30 15:38:20,553] - INFO - core - YAML successfully loaded from: 'config/params.yaml'
+[2025-06-30 15:38:20,904] - INFO - core - YAML successfully loaded from: 'config/schema.yaml'
+[2025-06-30 15:38:21,194] - INFO - core - YAML successfully loaded from: 'config/templates.yaml'
+[2025-06-30 15:38:21,492] - INFO - s3_handler - S3Handler initialized for bucket 'studentperformance-dev-artifacts' in region 'us-east-1'
+[2025-06-30 15:38:21,779] - INFO - model_prediction - Initializing ModelPrediction.
+[2025-06-30 15:38:22,067] - INFO - model_prediction - Loading inference model from local path.
+[2025-06-30 15:38:25,985] - INFO - core - Inference Model loaded from: 'inference_model/inference_model.joblib'
+[2025-06-30 15:38:37,886] - INFO - model_prediction - Running prediction using inference model.
+[2025-06-30 15:38:38,619] - INFO - model_prediction - Saved predictions locally at predictions\20250630T143822Z\20250630T143822Z_preds.csv
+[2025-06-30 15:38:38,895] - INFO - s3_handler - S3Handler context entered
+[2025-06-30 15:38:40,035] - INFO - s3_handler - Streamed DataFrame as CSV to: s3://studentperformance-dev-artifacts/predictions/20250630T143822Z/20250630T143822Z_preds.csv
+[2025-06-30 15:38:40,305] - INFO - model_prediction - Saved predictions to S3 at predictions/20250630T143822Z/20250630T143822Z_preds.csv
+[2025-06-30 15:38:40,579] - INFO - s3_handler - S3Handler context exited
